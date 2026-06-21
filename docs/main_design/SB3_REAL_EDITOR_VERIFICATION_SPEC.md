@@ -95,6 +95,9 @@ differences:
 evidence:
 ```
 
+記録ファイルの作成時は
+`docs/templates/REAL_EDITOR_VERIFICATION_TEMPLATE.md`を複製して使う。
+
 ## 失敗分類
 
 | 分類 | 例 | 最初に確認する層 |

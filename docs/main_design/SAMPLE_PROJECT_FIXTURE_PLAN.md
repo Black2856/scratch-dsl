@@ -2,14 +2,26 @@
 
 ## 目的
 
-AI生成、Runtime確認、SB3 export、実エディタ確認に共通利用できる小さな作品群を計画する。本フェーズではfixture実体やテストを追加しない。
+AI生成、Runtime確認、SB3 export、実エディタ確認に共通利用できる小さな作品群を管理する。
+
+## Phase 7 baseline
+
+優先対象のうち、次の11 fixtureを
+`tests/fixtures/phase7SampleProjects.ts`へ追加した。
+
+`hello-world`, `motion-basic`, `variable-score`, `broadcast-basic`,
+`list-basic`, `keyboard-control`, `procedure-basic`, `clone-basic`,
+`pen-basic`, `sound-basic`, `full-feature-minimal`
+
+素材bytesは`tests/fixtures/phase7SampleAssets.ts`が
+`workspace/test-project/`から読み込む。
 
 ## 共通方針
 
 - 1 fixtureは原則1つの主目的に限定する。
 - `createMinimalProject()`を基点に必要箇所だけを追加する。
 - 固定IDを使い、保存ごとに再採番しない。
-- assetは最小サイズかつMD5整合済みとする。
+- assetは`workspace/test-project/`から選び、MD5整合済みとする。
 - validator、Runtime、SB3 exportの期待値をfixture定義と同時に決める。
 - E2EはCanvas、DOM input、audioなどブラウザが必要な場合だけ追加する。
 
@@ -40,9 +52,9 @@ opcode名の最終確定は実装済みmetadataを正本とする。例えばcli
 
 ## asset計画
 
-- 共通の1〜2px SVGを視覚不要fixtureで再利用する。
-- costume切替fixtureは色または形が明確に異なる2枚を使う。
-- sound fixtureは短く、decode可能性を確認したWAVを使う。
+- 現在のcostume fixtureはDetermination glyph `c0041.png`を使う。
+- 現在のsound fixtureは`カーソル移動6.mp3`を使う。
+- 外部素材を勝手に追加しない。
 - bytes、assetId、md5extの対応表をfixture近傍へ置く。
 - ライセンス不明の外部assetを採用しない。
 

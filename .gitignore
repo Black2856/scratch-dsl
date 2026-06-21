@@ -12,3 +12,6 @@ node_modules/
 
 # Local debug output
 /debug.log
+
+# Local fixture and test assets (kept on disk, not committed)
+/workspace/

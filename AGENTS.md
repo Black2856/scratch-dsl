@@ -10,10 +10,10 @@
 
 ## Task and Model Optimization
 
-- Complex tasks: decompose + use sub-agents (Architect/Validator/Tester...)
-- Model: Opus/GPT-5.5 for complex, Sonnet/GPT-5.5 for general or fast
-- Strong model for planning, fast model for execution
-- Maximize token efficiency
+- Decompose complex tasks into independently verifiable parts.
+- Use sub-agents only when parallel work materially improves speed or review quality; give each a narrow, non-overlapping scope.
+- Match reasoning depth and available model capability to risk: stronger reasoning for architecture and compatibility, faster execution for bounded mechanical work.
+- Prefer targeted reads and focused tests; do not trade correctness for token savings.
 
 ## Current Status and Roadmap
 
@@ -22,6 +22,7 @@ Phases 0–6 are complete: validation, domain model, Runtime, Canvas/input,
 asset/audio, clone/procedure/pen/monitor, and DSL-to-SB3 export.
 
 - Phase 7: AI authoring workflow, sample fixtures, and real-editor verification.
+- Phase 7.1: local `workspace/projects/` preview and SB3 export workflow.
 - Phase 8: existing SB3 import and round-trip preservation.
 - Phase 9: optional compatibility improvements.
 
@@ -35,6 +36,19 @@ Use:
 - `docs/main_design/SB3_IMPORT_DESIGN_DRAFT.md` for Phase 8 design only.
 
 Do not implement a later phase unless explicitly requested.
+
+## Workspace and Test Assets
+
+- At task start, inspect `workspace/` and confirm the actual repository root before editing.
+- Local Scratch works live under `workspace/projects/<name>/`; keep their `project.ts`, `assets.json`, and generated `output/` there.
+- Use the same validated `project.ts` DSL for both `npm run preview -- <name>` and `npm run sb3 -- <name>`.
+- Keep reusable preview/CLI mechanisms in `preview/`, `tools/`, and `src/`; do not move common Runtime/Renderer/SB3 code into a workspace project.
+- `workspace/` is intentionally gitignored. Keep CI and regression fixtures under `tests/fixtures/`.
+- Phase 7 test assets live under `workspace/test-project/`.
+- Use `music/`, `sound_effect/`, and `sprite/` assets from that directory for fixtures and SB3 tests.
+- Do not add external assets without explicit approval.
+- Asset-backed fixtures must derive `assetId` from bytes and keep `md5ext = assetId.dataFormat`.
+- Keep filesystem reads in Node-only helpers so reusable DSL fixtures remain browser-safe.
 
 ## Sources of Truth
 
@@ -108,6 +122,8 @@ include `.ts`.
 npm install
 npm test
 npm run test:e2e
+npm run preview -- full-feature-minimal
+npm run sb3 -- full-feature-minimal
 node --experimental-strip-types --check src/validation/projectValidator.ts
 ```
 
