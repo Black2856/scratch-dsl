@@ -25,7 +25,7 @@ node --experimental-strip-types --check src/validation/projectValidator.ts
 
 ES モジュール内の相対 import は **明示的に `.ts` 拡張子を付ける**(type stripping の制約。例: `import {isValidId} from '../model/id.ts';`)。
 
-DSL 構造を変える時は JSON Schema (`schemas/project.schema.json`) と fixtures を併せて検証する。**Phase 0 のコードは DOM・Canvas・Web Audio・ZIP ライブラリに依存してはならない。**
+DSL 構造を変えるときは **`schemas/project.schema.json` と手書き validator の両方** を更新する(両者は二重管理。後述「スキーマと検証の関係」)。fixtures も併せて更新する。**Phase 0 のコードは DOM・Canvas・Web Audio・ZIP ライブラリに依存してはならない。**
 
 ## アーキテクチャ
 
@@ -54,6 +54,12 @@ DSL 構造を変える時は JSON Schema (`schemas/project.schema.json`) と fix
 - **未知 opcode はエラーで破棄せず warning として opaque 保持**(`opcode.unknown`)。後続 Phase での round-trip 保全のため。
 - broadcast 宣言は stage が所有する(sprite 側にあると `scope.broadcast-declaration`)。
 - 全 diagnostic は機械可読: `code`/`severity`/`path`/`entityId`/`opcode`/`message`。**`entityId` と `opcode` は不明でも省略せず `null` を入れる。**
+
+### スキーマと検証の関係(同期が必要)
+
+- `schemas/project.schema.json` は **実行時検証に使われていない**。`projectValidator.ts` は schema を import せず、構造検証を TypeScript で手書きしている(Phase 0 の外部ライブラリ依存禁止のため)。schema は規範ドキュメント兼 SB3 import 境界の位置づけで、`tests/validation/schema.test.ts` も schema が valid JSON で version/required を固定していることだけを確認する。
+- したがって **DSL 構造を変えたら schema と手書き validator(`validateShape`/`validateTargetShape`)を手動で同期させる**。片方だけ直すと齟齬が残る。
+- `src/blocks/opcodeMetadata.ts` は現状ほぼ **P0 opcode のみ**。clone(`control_create_clone_of` 等)・procedure(`procedures_*`)・pen(`pen_*`)・大半の sensing は `docs/SCRATCH_BLOCK_SPEC.md` に P1 以降として設計済みだが metadata 未登録で、現時点ではこれらを含む block は `opcode.unknown` warning になる(設計どおり)。Phase 1 以降で追加する。
 
 ## コーディング規約
 
