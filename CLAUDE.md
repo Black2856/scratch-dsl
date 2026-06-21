@@ -6,26 +6,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 HTML/CSS/JavaScript 上に「疑似 Scratch 3.0 基盤」(Runtime / Editor shell / Asset 管理 / `.sb3` 生成) を、Scratch の完全コピーではなく構造的に近い形で段階的に構築する。仕様の出所は `req.txt`(製品要件)と `docs/IMPLEMENTATION_ROADMAP.md`(Phase 0〜8 のロードマップ)。
 
-**現在は Phase 0。** Phase 0 のゴールは「実行できる Scratch 風システム」ではなく「壊れた参照や曖昧な型を後段へ渡さない互換 DSL」を完成させること。`docs/IMPLEMENTATION_ROADMAP.md` に従い、依頼されない限り後続 Phase を先取り実装しない。
+**Phase 0〜3 が完了済み(次は Phase 4)。** Phase 0=検証専用 DSL 基盤(`src/validation`・`src/blocks`・`src/cast`・`src/model/id.ts`)、Phase 1=ドメインモデル層(`src/model/`)、Phase 2=headless 実行エンジン(`src/runtime/`)、Phase 3=Canvas 2D 描画と DOM 入力(`src/render/`・`src/input/`)。`docs/IMPLEMENTATION_ROADMAP.md` に従い、**依頼されない限り後続 Phase を先取り実装しない**(1リクエスト=1 Phase が運用ルール)。各 Phase の詳細仕様は `docs/SCRATCH_*_SPEC.md`。
 
 ## ビルド・テスト・開発コマンド
 
-ルートに `package.json` もビルド工程も無い。Node.js 22+ が type stripping で TypeScript を直接実行する(検証時の実機: v22.17.0)。
+ソース本体にビルド工程は無く、Node.js 22+ が type stripping で TypeScript を直接実行する(検証時の実機: v22.17.0)。Phase 3 で `package.json` を導入(`devDependencies` は Playwright/esbuild のみ。`node_modules` は gitignore 済み、`npm install` が必要)。
 
 ```powershell
-# 全 validation テスト (node:test)
-node --no-warnings --experimental-strip-types --test tests/validation/*.test.ts
+# unit テスト一式 (node:test、DOM 非依存。validation/model/runtime/render/input)
+npm test
 
 # 単一テストファイル
 node --no-warnings --experimental-strip-types --test tests/validation/cast.test.ts
 
 # 1 ファイルの構文チェック
 node --experimental-strip-types --check src/validation/projectValidator.ts
+
+# ブラウザ統合テスト (Playwright + esbuild。Canvas/DOM が要るものだけ)
+npx playwright test
 ```
+
+unit テスト(`npm test`)は type stripping で直接実行され、ビルド不要。**Playwright テストだけ**は esbuild が `tests/e2e/entry.ts` をブラウザ用 IIFE にバンドルし(`tests/e2e/serve.mjs` が webServer 兼バンドラ)、Chromium で実行する。ブラウザ実行が要らない純粋ロジック(座標変換・key 正規化等)は必ず node:test 側に切り出すこと。
 
 ES モジュール内の相対 import は **明示的に `.ts` 拡張子を付ける**(type stripping の制約。例: `import {isValidId} from '../model/id.ts';`)。
 
-DSL 構造を変えるときは **`schemas/project.schema.json` と手書き validator の両方** を更新する(両者は二重管理。後述「スキーマと検証の関係」)。fixtures も併せて更新する。**Phase 0 のコードは DOM・Canvas・Web Audio・ZIP ライブラリに依存してはならない。**
+DSL 構造を変えるときは **`schemas/project.schema.json` と手書き validator の両方** を更新する(両者は二重管理。後述「スキーマと検証の関係」)。fixtures も併せて更新する。**検証層・Project model・Runtime は DOM/Canvas/Web Audio/ZIP に依存させない。** 描画は `RendererPort`、入力は `InputPort` という型のみの interface 越しに `CanvasRenderer`/`DomInputManager`(`src/render/`・`src/input/`)を接続する。Runtime はこれらの port interface のみを import し、具体実装は import しない(port 境界の維持は Phase 3 の完了条件)。
 
 ## アーキテクチャ
 

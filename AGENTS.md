@@ -19,10 +19,12 @@ Follow `docs/IMPLEMENTATION_ROADMAP.md`. Do not implement later phases unless re
 
 ## Build, Test, and Development Commands
 
-There is currently no package build step or root `package.json`. Node.js 22+ runs TypeScript through type stripping:
+Node.js 22+ runs TypeScript through type stripping (no build step for the source itself). A root `package.json` was added in Phase 3 with Playwright/esbuild as the only devDependencies (`node_modules` is gitignored; run `npm install` first).
+
+Unit tests (node:test, DOM-free):
 
 ```powershell
-node --no-warnings --experimental-strip-types --test tests/validation/*.test.ts
+npm test
 ```
 
 Run a syntax check over a file with:
@@ -31,7 +33,13 @@ Run a syntax check over a file with:
 node --experimental-strip-types --check src/validation/projectValidator.ts
 ```
 
-Validate the JSON Schema and fixtures when changing DSL structure. Phase 0 must remain independent of DOM, Canvas, Web Audio, and ZIP libraries.
+Browser integration tests (Playwright + esbuild bundle, Canvas/DOM only):
+
+```powershell
+npx playwright test
+```
+
+Validate the JSON Schema and hand-written validator together when changing DSL structure (they are dual-maintained). The validation layer, Project model, and Runtime must remain independent of DOM, Canvas, Web Audio, and ZIP libraries; rendering/input live behind the `RendererPort`/`InputPort` interfaces (`src/render/`, `src/input/`).
 
 ## Coding Style & Naming Conventions
 
