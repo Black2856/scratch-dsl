@@ -10,7 +10,7 @@
 
 | opcode | 入力/field | 型 | 概要 | SB3 | 優先度 |
 |---|---|---|---|---|---|
-| `motion_movesteps` | STEPS | S | directionへ移動 | 同opcode | P0 |
+| `motion_movesteps` | STEPS | S | Scratch directionから座標差分を計算して移動。pen down中は旧座標から新座標へ線描画 | 同opcode | P0（実装済み） |
 | `motion_gotoxy` / `motion_glidesecstoxy` | X,Y / SECS,X,Y | S | 座標設定/時間補間 | 同opcode | P0/P1 |
 | `motion_goto` / `motion_glideto` | TO | S | mouse/random/spriteへ | menu shadow | P1 |
 | `motion_turnright/turnleft` | DEGREES | S | direction変更 | 同opcode | P0 |
@@ -136,6 +136,10 @@ penはVM内蔵extension ID `pen` であり、SB3 opcodeは `pen_<opcode>` にな
 | `pen_setPenSizeTo` | SIZE: number=1 | stack | 直径を1..1200へclamp | P1 |
 
 legacyのshade/hue 4 opcodeもロード互換のため保持するがpaletteには表示しない。pen stateはtarget custom state `Scratch.pen` に置かれ、clone時に複製される。
+
+現在のRuntimeで移動とpen lineが接続されているmotion opcodeは
+`motion_movesteps`である。他のmotion opcodeはmetadata/SB3表現が存在しても、
+Runtime実装済みとはみなさない。
 
 `ExtensionManager`がbuilt-inとして登録する主要extension IDは `pen`, `music`, `videoSensing`, `text2speech`, `translate`, `faceSensing`, `wedo2`, `microbit`, `ev3`, `makeymakey`, `boost`, `gdxfor` である。初期実装はpenのみP1、music/video sensing/text-to-speech等はP3/P4とし、未知extension blockはDSL/SB3 round-trip時に保持する。
 

@@ -68,6 +68,13 @@ StopはRuntime thread、clone、soundを停止する。
 表示diagnosticはproject、target、thread、block、opcode、asset、pathを
 可能な範囲で保持する。
 
+`full-feature-minimal`の手動確認ではpen down後に`motion_movesteps`を実行し、
+円形の始点から移動先までの線分を確認する。音声終了後に生成されるcloneは
+source Spriteのcostume skinを共有し、fallback四角へ変化しない。
+
+preview描画ではcostumeなしStageを透明背景として扱う。fallback drawableは
+costumeなしSpriteのデバッグ表示に限定する。
+
 ## SB3 export
 
 ```powershell

@@ -47,6 +47,8 @@ npm run preview -- full-feature-minimal
 
 ブラウザに480×360 Canvas、緑の旗、Stop、thread/clone/asset/audio状態、diagnosticsが表示されます。緑の旗のクリック内でAudioContextを開始します。
 
+現在のpreviewでは`motion_movesteps`を実行でき、pen down中の移動は移動前後の座標を結ぶ線としてpen layerへ描画されます。costumeなしStageは透明背景として扱い、cloneは元Spriteのcostume skinを引き継ぎます。
+
 SB3出力:
 
 ```powershell

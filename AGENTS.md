@@ -81,6 +81,9 @@ DSL
 - Preserve unknown opcodes with diagnostics; do not silently discard them. New AI-authored projects should use only registered, implemented opcodes.
 - Validation, model, and Runtime must remain independent of DOM, Canvas, Web Audio, and ZIP implementations.
 - Runtime depends on ports (`RendererPort`, `InputPort`, `RuntimeAudioPort`), not browser implementations.
+- A costume-less Stage is transparent; do not render the Sprite fallback drawable for it.
+- Runtime clones inherit the source Sprite skin through the RendererPort clone seam.
+- `motion_movesteps` updates live Sprite coordinates and draws a pen segment when the pen is down.
 - Future SB3 import must preserve unknown blocks, mutations, extensions, comments, monitors, and metadata. Phase 8 is not implemented.
 
 ## Validation and DSL Changes
