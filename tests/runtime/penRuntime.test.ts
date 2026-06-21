@@ -11,6 +11,7 @@ import type {DrawableState, PenAttributes, PenPoint, RendererPort} from '../../s
 class PenRecorder implements RendererPort {
     clears = 0;
     points: Array<{point: PenPoint; attributes: PenAttributes}> = [];
+    lines: Array<{from: PenPoint; to: PenPoint; attributes: PenAttributes}> = [];
     stamps: string[] = [];
     renderDrawables(_states: DrawableState[]): void {}
     penClear(): void {
@@ -18,6 +19,9 @@ class PenRecorder implements RendererPort {
     }
     penPoint(point: PenPoint, attributes: PenAttributes): void {
         this.points.push({point, attributes});
+    }
+    penLine(from: PenPoint, to: PenPoint, attributes: PenAttributes): void {
+        this.lines.push({from, to, attributes});
     }
     penStamp(targetId: string): void {
         this.stamps.push(targetId);
@@ -50,6 +54,50 @@ test('pen blocks update pen state and drive the renderer pen port', () => {
 
     // pen_clear ran once at the top of the script.
     assert.equal(renderer.clears, 1);
+});
+
+test('motion_movesteps moves a sprite and draws a round-ended pen segment while pen is down', () => {
+    const dsl = createPenProject();
+    const spriteDsl = dsl.sprites[0];
+    spriteDsl.blocks['pen-down'].next = 'move-steps';
+    spriteDsl.blocks['move-steps'] = {
+        id: 'move-steps',
+        opcode: 'motion_movesteps',
+        next: 'pen-stamp',
+        parent: 'pen-down',
+        inputs: {STEPS: {block: 'move-distance', shadow: 'move-distance'}},
+        fields: {},
+        shadow: false,
+        topLevel: false
+    };
+    spriteDsl.blocks['move-distance'] = {
+        id: 'move-distance',
+        opcode: 'math_number',
+        next: null,
+        parent: 'move-steps',
+        inputs: {},
+        fields: {NUM: {value: 40}},
+        shadow: true,
+        topLevel: false
+    };
+    spriteDsl.blocks['pen-stamp'].parent = 'move-steps';
+
+    const project = createProject(dsl);
+    const renderer = new PenRecorder();
+    const runtime = new Runtime({renderer});
+    runtime.load(project);
+    runtime.start();
+    runtime.greenFlag();
+    runtime.tick();
+
+    const sprite = project.sprites[0];
+    assert.ok(Math.abs(sprite.x - 40) < 1e-10);
+    assert.ok(Math.abs(sprite.y) < 1e-10);
+    assert.deepEqual(renderer.lines, [{
+        from: {x: 0, y: 0},
+        to: {x: 40, y: 40 * Math.cos(Math.PI / 2)},
+        attributes: {color: '#ff0000', size: 10}
+    }]);
 });
 
 test('pen size is clamped to 1..1200 and pen up clears the down flag', () => {

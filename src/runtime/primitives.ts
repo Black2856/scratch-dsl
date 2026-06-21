@@ -6,6 +6,31 @@ import type {BlockUtil, PrimitiveValue} from './BlockRunner.ts';
 export type CommandPrimitive = (util: BlockUtil) => void | PromiseLike<unknown>;
 export type ReporterPrimitive = (util: BlockUtil) => PrimitiveValue;
 
+// ---------------------------------------------------------------------------
+// motion
+// ---------------------------------------------------------------------------
+
+const motionMoveSteps: CommandPrimitive = (util) => {
+    if (util.target.isStage) return;
+    const steps = Cast.toNumber(util.getInput('STEPS'));
+    const radians = util.target.direction * Math.PI / 180;
+    const from = {x: util.target.x, y: util.target.y};
+    const to = {
+        x: from.x + (steps * Math.sin(radians)),
+        y: from.y + (steps * Math.cos(radians))
+    };
+    util.target.setPosition(to.x, to.y);
+
+    const pen = util.runtime.pen.getState(util.target.id);
+    if (pen.down) {
+        util.runtime.renderer?.penLine?.(
+            from,
+            to,
+            {color: pen.color, size: pen.size}
+        );
+    }
+};
+
 /**
  * Resolves the broadcast id referenced by an `event_broadcast`/
  * `event_broadcastandwait` block's BROADCAST_INPUT, given the menu shadow's
@@ -459,6 +484,7 @@ const dataHideList: CommandPrimitive = (util) => {
 // ---------------------------------------------------------------------------
 
 export const commandPrimitives: Record<string, CommandPrimitive> = {
+    motion_movesteps: motionMoveSteps,
     control_wait: controlWait,
     control_repeat: controlRepeat,
     control_forever: controlForever,

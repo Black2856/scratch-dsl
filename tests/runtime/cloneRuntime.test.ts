@@ -13,8 +13,12 @@ import type {RuntimeAudioPort, RuntimeSoundPlayback} from '../../src/audio/Audio
 class RecordingRenderer implements RendererPort {
     lastStates: DrawableState[] = [];
     released: string[] = [];
+    clonedSkins: Array<{sourceTargetId: string; cloneTargetId: string}> = [];
     renderDrawables(states: DrawableState[]): void {
         this.lastStates = states;
+    }
+    cloneTargetSkin(sourceTargetId: string, cloneTargetId: string): void {
+        this.clonedSkins.push({sourceTargetId, cloneTargetId});
     }
     releaseTarget(targetId: string): void {
         this.released.push(targetId);
@@ -56,6 +60,22 @@ test('create clone produces a clone target and runs its start-as-clone hat', () 
     const hero = project.sprites[0];
     assert.equal(hero.variables.get('var-local-tag'), '');
     assert.equal(clone.original, hero);
+});
+
+test('create clone asks the renderer to reuse the source target skin', () => {
+    const project = createProject(createBareSpriteProject());
+    const renderer = new RecordingRenderer();
+    const runtime = new Runtime({renderer});
+    runtime.load(project);
+    runtime.start();
+
+    const sprite = project.sprites[0];
+    const clone = runtime.cloneManager.createClone(sprite);
+    assert.ok(clone);
+    assert.deepEqual(renderer.clonedSkins, [{
+        sourceTargetId: sprite.id,
+        cloneTargetId: clone.id
+    }]);
 });
 
 test('clone count never exceeds Runtime.MAX_CLONES', () => {

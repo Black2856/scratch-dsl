@@ -49,6 +49,8 @@ export interface RendererPort {
     penLine?(from: PenPoint, to: PenPoint, attributes: PenAttributes): void;
     /** Stamps the target's current drawable onto the pen layer. */
     penStamp?(targetId: string): void;
+    /** Reuses a source target's current Skin for a newly-created clone. */
+    cloneTargetSkin?(sourceTargetId: string, cloneTargetId: string): void;
     /** Releases any renderer state cached for a target (e.g. a deleted clone). */
     releaseTarget?(targetId: string): void;
 }

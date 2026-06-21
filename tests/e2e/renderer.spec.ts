@@ -126,6 +126,30 @@ test.describe('Phase 3 Canvas renderer + DOM input', () => {
         expect(size.height).toBe(360);
     });
 
+    test('a costume-less Stage does not render a fallback square', async ({page}) => {
+        await gotoHarness(page);
+
+        const centerAlpha = await page.evaluate(() => {
+            const canvas = document.getElementById('stage') as HTMLCanvasElement;
+            const renderer = window.App.createCanvasRenderer(canvas);
+            renderer.renderDrawables([{
+                targetId: 'stage-without-costume',
+                isStage: true,
+                x: 0,
+                y: 0,
+                size: 100,
+                direction: 90,
+                visible: true,
+                rotationStyle: 'all around',
+                layerOrder: 0,
+                costumeIndex: 0
+            }]);
+            return canvas.getContext('2d')!.getImageData(240, 180, 1, 1).data[3];
+        });
+
+        expect(centerAlpha).toBe(0);
+    });
+
     test('clientToScratch / InputManager normalize CSS-scaled canvases back to native stage coordinates', async ({page}) => {
         await gotoHarness(page);
 

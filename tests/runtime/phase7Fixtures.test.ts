@@ -69,11 +69,11 @@ test('hello-world updates and shows its message variable', () => {
     assert.equal(runtime.monitors.isVisible('hello-message'), true);
 });
 
-test('motion-basic loads and renders its initial sprite state without adding a new motion primitive', () => {
+test('motion-basic executes motion_movesteps and renders the updated sprite state', () => {
     const renderer = new RecordingRenderer();
     const runtime = runGreenFlag(createMotionBasicProject(), {renderer});
     const sprite = runtime.project.sprites[0];
-    assert.equal(sprite.x, -40);
+    assert.ok(Math.abs(sprite.x - -30) < 1e-10);
     assert.equal(sprite.y, 20);
     assert.ok(renderer.states.some(state => state.targetId === sprite.id));
 });
@@ -140,4 +140,3 @@ test('full-feature-minimal exercises data, broadcast, procedure, clone, pen, and
     assert.equal(renderer.points.length, 1);
     assert.equal(runtime.monitors.isVisible('var-score'), true);
 });
-

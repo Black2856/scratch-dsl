@@ -39,6 +39,7 @@ export class CloneManager {
 
         const clone = Clone.fromSource(source, generateId(20, () => this.runtime.random.random()));
         this.runtime.clones.push(clone);
+        this.runtime.renderer?.cloneTargetSkin?.(source.id, clone.id);
         this.runtime.pen.cloneState(source.id, clone.id);
         this.startCloneHats(clone);
         return clone;

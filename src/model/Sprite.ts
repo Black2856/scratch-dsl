@@ -35,8 +35,8 @@ export interface SpriteOptions extends TargetOptions {
 export class Sprite extends Target {
     readonly isStage: false = false;
     readonly visible: boolean;
-    readonly x: number;
-    readonly y: number;
+    x: number;
+    y: number;
     readonly size: number;
     readonly direction: number;
     readonly draggable: boolean;
@@ -51,5 +51,10 @@ export class Sprite extends Target {
         this.direction = options.direction;
         this.draggable = options.draggable;
         this.rotationStyle = options.rotationStyle;
+    }
+
+    setPosition(x: number, y: number): void {
+        this.x = Number.isFinite(x) ? x : 0;
+        this.y = Number.isFinite(y) ? y : 0;
     }
 }

@@ -65,7 +65,7 @@ test.describe('Phase 7 sample fixtures', () => {
             md5ext: SAMPLE_COSTUME_MD5EXT
         });
 
-        expect(result.state.x).toBe(-40);
+        expect(result.state.x).toBeCloseTo(-30);
         expect(result.state.y).toBe(20);
         expect(result.opaque).toBeGreaterThan(0);
     });

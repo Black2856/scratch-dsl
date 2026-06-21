@@ -119,6 +119,11 @@ export class CanvasRenderer implements RendererPort {
         if (state) this.paintDrawable(this.penCtx, state);
     }
 
+    cloneTargetSkin(sourceTargetId: string, cloneTargetId: string): void {
+        const skin = this.skins.get(sourceTargetId);
+        if (skin) this.skins.set(cloneTargetId, skin);
+    }
+
     /** Drops cached skin/state for a target (e.g. a deleted clone). */
     releaseTarget(targetId: string): void {
         this.skins.delete(targetId);
@@ -161,7 +166,7 @@ export class CanvasRenderer implements RendererPort {
             const rcx = drawable.skin!.rotationCenterX;
             const rcy = drawable.skin!.rotationCenterY;
             ctx.drawImage(image, -rcx, -rcy);
-        } else {
+        } else if (!state.isStage) {
             ctx.fillStyle = fallbackColorFor(state.targetId);
             ctx.fillRect(-FALLBACK_SIZE / 2, -FALLBACK_SIZE / 2, FALLBACK_SIZE, FALLBACK_SIZE);
         }

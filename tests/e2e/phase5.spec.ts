@@ -70,8 +70,19 @@ const PEN_PROJECT = {
                 shadow: true, topLevel: false
             },
             'pen-down': {
-                id: 'pen-down', opcode: 'pen_penDown', next: null,
+                id: 'pen-down', opcode: 'pen_penDown', next: 'move-steps',
                 parent: 'pen-size', inputs: {}, fields: {}, shadow: false, topLevel: false
+            },
+            'move-steps': {
+                id: 'move-steps', opcode: 'motion_movesteps', next: null,
+                parent: 'pen-down',
+                inputs: {STEPS: {block: 'move-distance', shadow: 'move-distance'}},
+                fields: {}, shadow: false, topLevel: false
+            },
+            'move-distance': {
+                id: 'move-distance', opcode: 'math_number', next: null,
+                parent: 'move-steps', inputs: {}, fields: {NUM: {value: 40}},
+                shadow: true, topLevel: false
             }
         },
         scripts: ['flag-pen'],
@@ -188,22 +199,30 @@ test.describe('Phase 5 pen + clone rendering', () => {
     test('pen down rasterises a coloured dot onto the stage canvas', async ({page}) => {
         await gotoHarness(page);
 
-        const pixel = await page.evaluate((dsl) => {
+        const pixels = await page.evaluate((dsl) => {
             const canvas = document.getElementById('stage') as HTMLCanvasElement;
             const renderer = window.App.createCanvasRenderer(canvas);
             const runtime = window.App.makeRuntime(dsl, renderer);
             runtime.greenFlag();
             runtime.tick();
             const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
-            const data = ctx.getImageData(240, 180, 1, 1).data;
-            return {r: data[0], g: data[1], b: data[2], a: data[3]};
+            const read = (x: number, y: number) => {
+                const data = ctx.getImageData(x, y, 1, 1).data;
+                return {r: data[0], g: data[1], b: data[2], a: data[3]};
+            };
+            return {
+                start: read(240, 180),
+                line: read(260, 180),
+                end: read(280, 180)
+            };
         }, PEN_PROJECT);
 
-        // A red pen dot was drawn at the stage origin (canvas centre 240,180).
-        expect(pixel.a).toBeGreaterThan(0);
-        expect(pixel.r).toBeGreaterThan(200);
-        expect(pixel.g).toBeLessThan(80);
-        expect(pixel.b).toBeLessThan(80);
+        for (const pixel of [pixels.start, pixels.line, pixels.end]) {
+            expect(pixel.a).toBeGreaterThan(0);
+            expect(pixel.r).toBeGreaterThan(200);
+            expect(pixel.g).toBeLessThan(80);
+            expect(pixel.b).toBeLessThan(80);
+        }
     });
 
     test('create clone is painted as its own drawable in the draw order', async ({page}) => {
@@ -224,5 +243,38 @@ test.describe('Phase 5 pen + clone rendering', () => {
 
         expect(result.count).toBe(1);
         expect(result.drawOrder).toContain(result.cloneId);
+    });
+
+    test('a clone reuses its source sprite skin instead of a colored fallback square', async ({page}) => {
+        await gotoHarness(page);
+
+        const pixel = await page.evaluate((dsl) => {
+            const canvas = document.getElementById('stage') as HTMLCanvasElement;
+            const renderer = window.App.createCanvasRenderer(canvas);
+            const image = document.createElement('canvas');
+            image.width = 4;
+            image.height = 4;
+            const imageContext = image.getContext('2d')!;
+            imageContext.fillStyle = '#ff0000';
+            imageContext.fillRect(0, 0, 4, 4);
+            renderer.registerSkin('clone-sprite', {
+                rotationCenterX: 2,
+                rotationCenterY: 2,
+                getImage: () => image
+            });
+            const runtime = window.App.makeRuntime(dsl, renderer);
+            runtime.greenFlag();
+            runtime.tick();
+            const clone = runtime.clones[0] as {setPosition(x: number, y: number): void};
+            clone.setPosition(-60, 0);
+            runtime.tick();
+            const data = canvas.getContext('2d')!.getImageData(180, 180, 1, 1).data;
+            return {r: data[0], g: data[1], b: data[2], a: data[3]};
+        }, CLONE_PROJECT);
+
+        expect(pixel.a).toBeGreaterThan(0);
+        expect(pixel.r).toBeGreaterThan(200);
+        expect(pixel.g).toBeLessThan(50);
+        expect(pixel.b).toBeLessThan(50);
     });
 });
