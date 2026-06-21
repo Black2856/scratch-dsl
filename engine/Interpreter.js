@@ -578,6 +578,35 @@ function* runStep(step, target, ctx, runtime) {
       break;
     }
 
+    // ─── Pen ─────────────────────────────────────────────────────────
+    case 'penClear':
+      if (runtime.pen) runtime.pen.clear();
+      break;
+
+    case 'penStamp':
+      if (runtime.pen) runtime.pen.stamp(target);
+      break;
+
+    case 'penDown':
+      if (runtime.pen) runtime.pen.penDown(target);
+      break;
+
+    case 'penUp':
+      if (runtime.pen) runtime.pen.penUp(target);
+      break;
+
+    case 'penSetColor':
+      if (runtime.pen) runtime.pen.setColor(target, String(evalReporter(step.color, target, ctx, runtime)));
+      break;
+
+    case 'penSetSize':
+      if (runtime.pen) runtime.pen.setSize(target, evalReporter(step.size, target, ctx, runtime));
+      break;
+
+    case 'penChangeSize':
+      if (runtime.pen) runtime.pen.changeSize(target, evalReporter(step.value, target, ctx, runtime));
+      break;
+
     default:
       // Unknown step type — ignore
       break;

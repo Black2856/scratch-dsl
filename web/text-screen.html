@@ -9,7 +9,7 @@
 <body>
   <h1>TEXT SCREEN</h1>
   <p class="subtitle">Scratch には文字表示が無いため、Determination フォントの 1文字=1画像 を
-    ブロック定義（writeText）でクローン描画するテスト画面</p>
+    ブロック定義（writeText）と Pen の stamp で描画するテスト画面</p>
 
   <!-- 内部解像度 480x360 固定。表示は CSS で拡大 -->
   <canvas id="stage" width="480" height="360"></canvas>
@@ -20,7 +20,7 @@
   </div>
 
   <div id="status">
-    <span>glyph clones: <b id="st-clones">0</b></span>
+    <span>描画方式: <b>pen stamp</b></span>
     <span>costumes: <b id="st-costumes">0</b></span>
   </div>
 

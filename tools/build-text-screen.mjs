@@ -63,7 +63,9 @@ if (costumes.length === 0) {
 const V = (name) => ({ op: 'var', name });
 const ARG = (name) => ({ op: 'arg', name });
 
-// writeText(text, x, y): 文字列を1文字ずつクローン生成して x から spacing 間隔で並べる
+// writeText(text, x, y): 文字列を1文字ずつ pen の stamp で焼き付けて x から spacing 間隔で並べる。
+// 1文字ごとに「コスチュームをその文字へ切替 → 位置へ移動 → スタンプ」を繰り返す。
+// クローンを使わないのでクローン数(300)上限の影響を受けない。
 const writeText = {
   name: 'writeText',
   params: [
@@ -76,12 +78,13 @@ const writeText = {
     { type: 'set', var: 'i', value: 1 },
     { type: 'repeat', times: { op: 'lengthOf', text: ARG('text') }, steps: [
       { type: 'set', var: 'gchar', value: { op: 'letterOf', text: ARG('text'), index: V('i') } },
-      { type: 'set', var: 'gx', value: { op: 'add', a: ARG('x'),
+      { type: 'switchCostume', name: V('gchar') },
+      { type: 'setX', x: { op: 'add', a: ARG('x'),
         b: { op: 'mul', a: { op: 'sub', a: V('i'), b: 1 }, b: V('spacing') } } },
-      { type: 'set', var: 'gy', value: ARG('y') },
-      // 空白はクローンを作らない（透明なので不要・クローン節約）
+      { type: 'setY', y: ARG('y') },
+      // 空白はスタンプ不要（透明）
       { type: 'if', condition: { op: 'not', a: { op: 'eq', a: V('gchar'), b: ' ' } }, then: [
-        { type: 'createClone', target: 'myself' },
+        { type: 'penStamp' },
       ] },
       { type: 'change', var: 'i', value: 1 },
     ] },
@@ -102,19 +105,10 @@ const LINES = [
 const greenFlag = {
   event: { type: 'green_flag' },
   steps: [
-    { type: 'hide' },
+    { type: 'hide' },          // 描画担当スプライト本体は隠す（stamp は非表示でも焼ける）
+    { type: 'penClear' },      // 前回の描画を消す
     { type: 'set', var: 'spacing', value: SPACING },
     ...LINES.map(([text, x, y]) => ({ type: 'call', proc: 'writeText', args: { text, x, y } })),
-  ],
-};
-
-const cloneStart = {
-  event: { type: 'clone_start' },
-  steps: [
-    { type: 'switchCostume', name: V('gchar') },
-    { type: 'setX', x: V('gx') },
-    { type: 'setY', y: V('gy') },
-    { type: 'show' },
   ],
 };
 
@@ -136,10 +130,10 @@ const dsl = {
       currentCostume: 0,
       costumes,
       sounds: [],
-      variables: { i: 1, gchar: '', gx: 0, gy: 0, spacing: SPACING },
+      variables: { i: 1, gchar: '', spacing: SPACING },
       lists: {},
       procedures: [writeText],
-      scripts: [greenFlag, cloneStart],
+      scripts: [greenFlag],
     },
   ],
 };
@@ -150,4 +144,4 @@ const nonSpaceChars = LINES.reduce((n, [t]) => n + t.replace(/ /g, '').length, 0
 console.log(`glyph PNG written : ${written} (${GLYPH_DIR_REL}/)`);
 console.log(`costumes in DSL   : ${costumes.length}`);
 console.log(`DSL written       : spec/text-screen.dsl.json`);
-console.log(`test lines        : ${LINES.length}, est. clones (non-space chars): ${nonSpaceChars}`);
+console.log(`test lines        : ${LINES.length}, pen stamps (non-space chars): ${nonSpaceChars}`);

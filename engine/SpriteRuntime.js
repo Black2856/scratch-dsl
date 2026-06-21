@@ -67,10 +67,16 @@ export class SpriteRuntime {
 
   // ─── Motion ───────────────────────────────────────────────────────────
 
-  setX(v) { this.x = Number(v); }
-  setY(v) { this.y = Number(v); }
-  changeX(d) { this.x += Number(d); }
-  changeY(d) { this.y += Number(d); }
+  setX(v) { const ox = this.x, oy = this.y; this.x = Number(v); this._penMove(ox, oy); }
+  setY(v) { const ox = this.x, oy = this.y; this.y = Number(v); this._penMove(ox, oy); }
+  changeX(d) { const ox = this.x, oy = this.y; this.x += Number(d); this._penMove(ox, oy); }
+  changeY(d) { const ox = this.x, oy = this.y; this.y += Number(d); this._penMove(ox, oy); }
+
+  /** ペンが下りていれば移動軌跡を線として pen レイヤに描く。 */
+  _penMove(oldX, oldY) {
+    const pen = this._runtime && this._runtime.pen;
+    if (pen) pen.moveTo(this, oldX, oldY, this.x, this.y);
+  }
 
   pointInDirection(d) {
     this.direction = Number(d);
@@ -95,6 +101,7 @@ export class SpriteRuntime {
     const startY = this.y;
     const startTime = this._runtime._now();
     const endTime = startTime + secs * 1000;
+    let prevX = this.x, prevY = this.y;
 
     while (true) {
       yield { type: 'frame' };
@@ -102,11 +109,15 @@ export class SpriteRuntime {
       if (now >= endTime) {
         this.x = x;
         this.y = y;
+        this._penMove(prevX, prevY);
         break;
       }
       const t = (now - startTime) / (secs * 1000);
       this.x = startX + (x - startX) * t;
       this.y = startY + (y - startY) * t;
+      this._penMove(prevX, prevY);
+      prevX = this.x;
+      prevY = this.y;
     }
   }
 

@@ -9,7 +9,6 @@ import { Runtime, loadCostumeImages } from '../engine/index.js';
 const canvas    = document.getElementById('stage');
 const btnDraw   = document.getElementById('btn-draw');
 const btnStop   = document.getElementById('btn-stop');
-const stClones  = document.getElementById('st-clones');
 const stCostume = document.getElementById('st-costumes');
 
 let runtime = null;
@@ -27,19 +26,12 @@ async function init() {
 
   window.__runtime = runtime;
   window.__textState = () => ({
-    clones: runtime.clones.total(),
     costumes: (runtime.getTargetByName('Glyph')?.costumes.length) ?? 0,
   });
 
   const glyph = runtime.getTargetByName('Glyph');
   stCostume.textContent = glyph ? glyph.costumes.length : 0;
   console.log('[text-screen] runtime ready, glyph costumes:', glyph?.costumes.length);
-}
-
-function updateStatus() {
-  if (!runtime) return;
-  stClones.textContent = runtime.clones.total();
-  requestAnimationFrame(updateStatus);
 }
 
 async function run() {
@@ -59,7 +51,6 @@ async function run() {
   runtime.greenFlag();
   runtime.startTick();
   btnDraw.textContent = '↺ 再描画';
-  updateStatus();
 }
 
 btnDraw.addEventListener('click', run);

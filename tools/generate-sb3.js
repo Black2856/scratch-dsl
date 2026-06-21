@@ -76,6 +76,8 @@ export class Sb3Generator {
 
     const targets = [];
 
+    this._usesPen = false;
+
     // Stage
     const stageTarget = this._buildTarget(dsl.stage, true);
     // Attach broadcasts to stage
@@ -90,7 +92,7 @@ export class Sb3Generator {
     return {
       targets,
       monitors: [],
-      extensions: [],
+      extensions: this._usesPen ? ['pen'] : [],
       meta: { semver: '3.0.0', vm: '2.3.4', agent: 'htmlJs2sb3' }
     };
   }
@@ -772,6 +774,53 @@ export class Sb3Generator {
           inputs: { QUESTION: this._valInput(step.question, 'string') },
           fields: {},
         };
+        break;
+
+      // ── Pen (extension) ──
+      case 'penClear':
+        block = { opcode: 'pen_clear', next: nextId, parent: parentId, inputs: {}, fields: {}, shadow: false, topLevel: false };
+        this._usesPen = true;
+        break;
+      case 'penStamp':
+        block = { opcode: 'pen_stamp', next: nextId, parent: parentId, inputs: {}, fields: {}, shadow: false, topLevel: false };
+        this._usesPen = true;
+        break;
+      case 'penDown':
+        block = { opcode: 'pen_penDown', next: nextId, parent: parentId, inputs: {}, fields: {}, shadow: false, topLevel: false };
+        this._usesPen = true;
+        break;
+      case 'penUp':
+        block = { opcode: 'pen_penUp', next: nextId, parent: parentId, inputs: {}, fields: {}, shadow: false, topLevel: false };
+        this._usesPen = true;
+        break;
+      case 'penSetColor': {
+        const hex = String(step.color ?? '#000000').replace('#', '').padStart(6, '0').slice(0, 6);
+        block = {
+          opcode: 'pen_setPenColorToColor',
+          next: nextId, parent: parentId, shadow: false, topLevel: false,
+          inputs: { COLOR: [1, [9, `#${hex}`]] },
+          fields: {},
+        };
+        this._usesPen = true;
+        break;
+      }
+      case 'penSetSize':
+        block = {
+          opcode: 'pen_setPenSizeTo',
+          next: nextId, parent: parentId, shadow: false, topLevel: false,
+          inputs: { SIZE: this._valInput(step.size, 'number') },
+          fields: {},
+        };
+        this._usesPen = true;
+        break;
+      case 'penChangeSize':
+        block = {
+          opcode: 'pen_changePenSizeBy',
+          next: nextId, parent: parentId, shadow: false, topLevel: false,
+          inputs: { SIZE: this._valInput(step.value, 'number') },
+          fields: {},
+        };
+        this._usesPen = true;
         break;
 
       // ── Procedure call ──

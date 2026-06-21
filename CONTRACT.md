@@ -174,6 +174,18 @@ proccode は `name` + 各 param 型に応じて ` %s`(string) / ` %n`(number) / 
 |---|---|---|
 | `call` | `proc`(名前),`args`({paramName:value,...}) | 定義済み手続き呼出 |
 
+### ペン(pen・追加機能)
+pen レイヤ（480x360 オフスクリーン）へ描画。Renderer が背景の上・スプライトの下に合成する。
+| type | 引数 | 動作 |
+|---|---|---|
+| `penClear` | — | pen レイヤを全消去 |
+| `penStamp` | — | 現在のコスチューム画像をその位置・サイズ・向きで pen レイヤに焼き付ける（表示/非表示問わず） |
+| `penDown` | — | ペンを下ろす（以後の移動で軌跡を線描画） |
+| `penUp` | — | ペンを上げる |
+| `penSetColor` | `color`(文字列 `#rrggbb`) | ペン色を設定 |
+| `penSetSize` | `size` | ペン太さを設定 |
+| `penChangeSize` | `value` | ペン太さを相対変更 |
+
 ---
 
 ## 3. Reporter 一覧（`{op, ...}` 形式）
@@ -631,6 +643,18 @@ substack: `inputs.SUBSTACK = [2, "<最初の子blockId>"]`、ifElseは `SUBSTACK
 | arg(rep) boolean | argument_reporter_boolean | fields.VALUE=[name,null] |
 
 mutation 文字列値はJSON文字列としてエスケープ（argumentids等は JSON.stringify した配列文字列）。
+
+### ペン(pen 拡張)
+pen ブロックを含む場合、project.json の `extensions` に `"pen"` を加える。
+| DSL | opcode | inputs/fields |
+|---|---|---|
+| penClear | pen_clear | — |
+| penStamp | pen_stamp | — |
+| penDown | pen_penDown | — |
+| penUp | pen_penUp | — |
+| penSetColor | pen_setPenColorToColor | COLOR=[1,[9,"#rrggbb"]] |
+| penSetSize | pen_setPenSizeTo | SIZE |
+| penChangeSize | pen_changePenSizeBy | SIZE |
 
 ---
 

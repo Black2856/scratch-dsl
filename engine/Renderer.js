@@ -40,9 +40,20 @@ export class Renderer {
     const drawTargets = runtime.targets.slice()
       .sort((a, b) => a.layerOrder - b.layerOrder);
 
+    // 1. Stage backdrop(s)
     for (const target of drawTargets) {
-      if (!target.visible) continue;
-      this._drawTarget(ctx, target);
+      if (target.isStage && target.visible) this._drawTarget(ctx, target);
+    }
+
+    // 2. Pen layer (Scratch: above backdrop, below sprites)
+    if (runtime.pen && typeof runtime.pen.getLayerCanvas === 'function') {
+      const layer = runtime.pen.getLayerCanvas();
+      if (layer) ctx.drawImage(layer, 0, 0);
+    }
+
+    // 3. Sprites and clones
+    for (const target of drawTargets) {
+      if (!target.isStage && target.visible) this._drawTarget(ctx, target);
     }
 
     // Say bubbles

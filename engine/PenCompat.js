@@ -47,20 +47,49 @@ export class PenCompat {
     this._getState(target).size = Math.max(1, Number(n));
   }
 
+  changeSize(target, n) {
+    const s = this._getState(target);
+    s.size = Math.max(1, s.size + Number(n));
+  }
+
   clear() {
     if (this._offCtx) {
       this._offCtx.clearRect(0, 0, 480, 360);
     }
   }
 
+  /**
+   * スプライトの現在のコスチュームを pen レイヤに焼き付ける（Scratch の stamp）。
+   * 表示/非表示に関わらず描画する。画像未ロード時はプレースホルダ矩形。
+   */
   stamp(target) {
     if (!this._offCtx) return;
+    const ctx = this._offCtx;
     const cx = target.x + 240;
     const cy = 180 - target.y;
-    const w = 48 * (target.size / 100);
-    const h = 48 * (target.size / 100);
-    this._offCtx.fillStyle = '#888';
-    this._offCtx.fillRect(cx - w / 2, cy - h / 2, w, h);
+
+    const costume = target.costumes[target.currentCostume];
+    const img = (costume && target._images) ? target._images.get(costume.name) : null;
+
+    if (img && img.complete && img.naturalWidth > 0) {
+      const scale = target.size / 100;
+      const w = img.naturalWidth  * scale;
+      const h = img.naturalHeight * scale;
+      ctx.save();
+      ctx.translate(cx, cy);
+      if (target.rotationStyle !== "don't rotate") {
+        ctx.rotate(((target.direction - 90) * Math.PI) / 180);
+      }
+      ctx.drawImage(img, -w / 2, -h / 2, w, h);
+      ctx.restore();
+    } else {
+      const w = 48 * (target.size / 100);
+      const h = 48 * (target.size / 100);
+      ctx.save();
+      ctx.fillStyle = '#888';
+      ctx.fillRect(cx - w / 2, cy - h / 2, w, h);
+      ctx.restore();
+    }
   }
 
   /** Called when a target moves while pen is down. */

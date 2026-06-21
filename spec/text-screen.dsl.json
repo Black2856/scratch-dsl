@@ -717,8 +717,6 @@
       "variables": {
         "i": 1,
         "gchar": "",
-        "gx": 0,
-        "gy": 0,
         "spacing": 17
       },
       "lists": {},
@@ -772,9 +770,15 @@
                   }
                 },
                 {
-                  "type": "set",
-                  "var": "gx",
-                  "value": {
+                  "type": "switchCostume",
+                  "name": {
+                    "op": "var",
+                    "name": "gchar"
+                  }
+                },
+                {
+                  "type": "setX",
+                  "x": {
                     "op": "add",
                     "a": {
                       "op": "arg",
@@ -798,9 +802,8 @@
                   }
                 },
                 {
-                  "type": "set",
-                  "var": "gy",
-                  "value": {
+                  "type": "setY",
+                  "y": {
                     "op": "arg",
                     "name": "y"
                   }
@@ -820,8 +823,7 @@
                   },
                   "then": [
                     {
-                      "type": "createClone",
-                      "target": "myself"
+                      "type": "penStamp"
                     }
                   ]
                 },
@@ -843,6 +845,9 @@
           "steps": [
             {
               "type": "hide"
+            },
+            {
+              "type": "penClear"
             },
             {
               "type": "set",
@@ -911,37 +916,6 @@
                 "x": -214,
                 "y": -80
               }
-            }
-          ]
-        },
-        {
-          "event": {
-            "type": "clone_start"
-          },
-          "steps": [
-            {
-              "type": "switchCostume",
-              "name": {
-                "op": "var",
-                "name": "gchar"
-              }
-            },
-            {
-              "type": "setX",
-              "x": {
-                "op": "var",
-                "name": "gx"
-              }
-            },
-            {
-              "type": "setY",
-              "y": {
-                "op": "var",
-                "name": "gy"
-              }
-            },
-            {
-              "type": "show"
             }
           ]
         }
