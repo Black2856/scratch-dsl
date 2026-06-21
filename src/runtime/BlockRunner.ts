@@ -17,6 +17,13 @@ export type PrimitiveValue = string | number | boolean;
 const isThenable = (value: unknown): value is PromiseLike<unknown> =>
     typeof value === 'object' && value !== null && typeof (value as {then?: unknown}).then === 'function';
 
+interface PendingCommand {
+    blockId: string;
+    state: 'pending' | 'settled';
+}
+
+const PENDING_COMMAND = '__pendingCommand';
+
 /**
  * Per-call helper surface passed to primitives as `util`. Bundles the
  * current thread/target/runtime plus convenience accessors so individual
@@ -162,14 +169,36 @@ export const evaluateReporter = (runtime: Runtime, thread: Thread, block: DslBlo
  * that return a thenable move the thread into PROMISE_WAIT until it settles.
  */
 export const execute = (runtime: Runtime, thread: Thread, block: DslBlock): void => {
+    const frame = thread.peekFrame();
+    if (!frame) return;
+    const pending = frame.executionContext[PENDING_COMMAND] as PendingCommand | undefined;
+    if (pending?.blockId === block.id) {
+        if (pending.state === 'pending') {
+            thread.status = 'PROMISE_WAIT';
+            return;
+        }
+        delete frame.executionContext[PENDING_COMMAND];
+        return;
+    }
+
     const command = commandPrimitives[block.opcode];
     if (!command) return;
     const util = new BlockUtil(runtime, thread, block);
     const result = command(util);
     if (isThenable(result)) {
+        const nextPending: PendingCommand = {blockId: block.id, state: 'pending'};
+        frame.executionContext[PENDING_COMMAND] = nextPending;
         thread.status = 'PROMISE_WAIT';
-        result.then(() => {
-            if (thread.status === 'PROMISE_WAIT') {
+        Promise.resolve(result).then(
+            () => {
+                nextPending.state = 'settled';
+            },
+            () => {
+                nextPending.state = 'settled';
+            }
+        ).then(() => {
+            const current = thread.peekFrame()?.executionContext[PENDING_COMMAND];
+            if (current === nextPending && thread.status === 'PROMISE_WAIT') {
                 thread.status = 'RUNNING';
             }
         });

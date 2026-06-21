@@ -278,6 +278,51 @@ const eventBroadcastAndWait: CommandPrimitive = (util) => {
 };
 
 // ---------------------------------------------------------------------------
+// sound
+// ---------------------------------------------------------------------------
+
+const resolveSoundId = (util: BlockUtil): string | null => {
+    const sounds = util.target.sounds;
+    if (sounds.length === 0) return null;
+    const requested = util.getInput('SOUND_MENU');
+    if (typeof requested === 'string') {
+        const byName = sounds.find(sound => sound.name === requested);
+        if (byName) return byName.id;
+    }
+    const numeric = Math.floor(Cast.toNumber(requested));
+    if (!Number.isFinite(numeric)) return null;
+    const index = ((numeric - 1) % sounds.length + sounds.length) % sounds.length;
+    return sounds[index].id;
+};
+
+const soundPlay: CommandPrimitive = (util) => {
+    const soundId = resolveSoundId(util);
+    if (soundId) util.runtime.audio?.play(util.target.id, soundId);
+};
+
+const soundPlayUntilDone: CommandPrimitive = (util) => {
+    const soundId = resolveSoundId(util);
+    if (!soundId) return;
+    return util.runtime.audio?.play(util.target.id, soundId)?.finished;
+};
+
+const soundStopAll: CommandPrimitive = (util) => {
+    util.runtime.audio?.stopAll();
+};
+
+const soundSetVolume: CommandPrimitive = (util) => {
+    util.target.setVolume(Cast.toNumber(util.getInput('VOLUME')));
+    util.runtime.audio?.setTargetVolume(util.target.id, util.target.volume);
+};
+
+const soundChangeVolume: CommandPrimitive = (util) => {
+    util.target.changeVolume(Cast.toNumber(util.getInput('VOLUME')));
+    util.runtime.audio?.setTargetVolume(util.target.id, util.target.volume);
+};
+
+const soundVolume: ReporterPrimitive = (util) => util.target.volume;
+
+// ---------------------------------------------------------------------------
 // registries
 // ---------------------------------------------------------------------------
 
@@ -296,7 +341,12 @@ export const commandPrimitives: Record<string, CommandPrimitive> = {
     data_insertatlist: dataInsertAtList,
     data_replaceitemoflist: dataReplaceItemOfList,
     event_broadcast: eventBroadcast,
-    event_broadcastandwait: eventBroadcastAndWait
+    event_broadcastandwait: eventBroadcastAndWait,
+    sound_play: soundPlay,
+    sound_playuntildone: soundPlayUntilDone,
+    sound_stopallsounds: soundStopAll,
+    sound_setvolumeto: soundSetVolume,
+    sound_changevolumeby: soundChangeVolume
 };
 
 export const reporterPrimitives: Record<string, ReporterPrimitive> = {
@@ -305,5 +355,6 @@ export const reporterPrimitives: Record<string, ReporterPrimitive> = {
     data_itemnumoflist: dataItemNumOfList,
     data_lengthoflist: dataLengthOfList,
     data_listcontainsitem: dataListContainsItem,
-    data_listcontents: dataListContents
+    data_listcontents: dataListContents,
+    sound_volume: soundVolume
 };

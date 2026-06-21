@@ -5,8 +5,8 @@
   "type": "module",
   "description": "段階的 Scratch 3.0 互換 DSL 基盤 (pseudo Runtime / Editor / Asset / .sb3)",
   "scripts": {
-    "test": "node --no-warnings --experimental-strip-types --test tests/validation/*.test.ts tests/model/*.test.ts tests/runtime/*.test.ts tests/render/*.test.ts tests/input/*.test.ts",
-    "test:e2e": "playwright test"
+    "test": "node --no-warnings --experimental-strip-types --test tests/validation/*.test.ts tests/model/*.test.ts tests/runtime/*.test.ts tests/render/*.test.ts tests/input/*.test.ts tests/assets/*.test.ts tests/audio/*.test.ts",
+    "test:e2e": "node tests/e2e/run.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",

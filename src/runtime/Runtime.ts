@@ -9,6 +9,7 @@ import {BlockRunner} from './BlockRunner.ts';
 import {startHats, type HatMatch} from './EventBus.ts';
 import type {RendererPort, DrawableState} from '../render/RendererPort.ts';
 import type {InputPort} from '../input/InputPort.ts';
+import type {RuntimeAudioPort} from '../audio/AudioPort.ts';
 
 /** Safety valve against pathological cross-thread cascades within one tick. */
 export const MAX_TICK_PASSES = 1000;
@@ -27,6 +28,7 @@ export interface RuntimeOptions {
     random?: RandomPort;
     renderer?: RendererPort;
     input?: InputPort;
+    audio?: RuntimeAudioPort;
 }
 
 /**
@@ -41,6 +43,7 @@ export class Runtime {
     readonly blockRunner: BlockRunner;
     readonly renderer?: RendererPort;
     readonly input?: InputPort;
+    readonly audio?: RuntimeAudioPort;
     threads: Thread[] = [];
     currentMSecs = 0;
 
@@ -50,6 +53,7 @@ export class Runtime {
         this.blockRunner = new BlockRunner(this);
         this.renderer = options.renderer;
         this.input = options.input;
+        this.audio = options.audio;
     }
 
     /** Attaches the project model. Block indices already live on BlockContainer, so this is a direct assignment. */
@@ -75,6 +79,7 @@ export class Runtime {
 
     /** Stops every thread immediately and clears the thread list. */
     stopAll(): void {
+        this.audio?.stopAll();
         for (const thread of this.threads) {
             thread.stackFrames.length = 0;
             thread.status = 'DONE';
