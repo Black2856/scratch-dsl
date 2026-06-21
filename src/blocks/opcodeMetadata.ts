@@ -99,6 +99,34 @@ const entries: OpcodeMetadata[] = [
     }),
     define('control_stop', 'cap', 'P0', {}, {STOP_OPTION: FIELD()}),
 
+    // --- P1: clones ---------------------------------------------------------
+    define('control_create_clone_of', 'stack', 'P1', {
+        CLONE_OPTION: VALUE('control_create_clone_of_menu')
+    }),
+    define('control_delete_this_clone', 'cap', 'P1', {}, {}, 'sprite'),
+    define('control_start_as_clone', 'hat', 'P1', {}, {}, 'sprite'),
+
+    // --- P1: custom procedures ---------------------------------------------
+    define('procedures_definition', 'hat', 'P1', {custom_block: VALUE('procedures_prototype')}),
+    define('procedures_call', 'stack', 'P1'),
+    define('argument_reporter_string_number', 'reporter', 'P1', {}, {VALUE: FIELD()}),
+    define('argument_reporter_boolean', 'boolean', 'P1', {}, {VALUE: FIELD()}),
+
+    // --- P1: pen extension --------------------------------------------------
+    define('pen_clear', 'stack', 'P1'),
+    define('pen_stamp', 'stack', 'P1', {}, {}, 'sprite'),
+    define('pen_penDown', 'stack', 'P1', {}, {}, 'sprite'),
+    define('pen_penUp', 'stack', 'P1', {}, {}, 'sprite'),
+    define('pen_setPenColorToColor', 'stack', 'P1', {COLOR: VALUE('colour_picker')}),
+    define('pen_changePenSizeBy', 'stack', 'P1', {SIZE: VALUE('math_number')}),
+    define('pen_setPenSizeTo', 'stack', 'P1', {SIZE: VALUE('math_number')}),
+
+    // --- P1: variable/list monitors ----------------------------------------
+    define('data_showvariable', 'stack', 'P1', {}, {VARIABLE: FIELD('variable')}),
+    define('data_hidevariable', 'stack', 'P1', {}, {VARIABLE: FIELD('variable')}),
+    define('data_showlist', 'stack', 'P1', {}, {LIST: FIELD('list')}),
+    define('data_hidelist', 'stack', 'P1', {}, {LIST: FIELD('list')}),
+
     define('sensing_keypressed', 'boolean', 'P0', {KEY_OPTION: VALUE('sensing_keyoptions')}),
     define('sensing_mousedown', 'boolean', 'P0'),
     define('sensing_mousex', 'reporter', 'P0'),
@@ -158,7 +186,12 @@ const entries: OpcodeMetadata[] = [
     define('event_broadcast_menu', 'shadow', 'P0', {}, {BROADCAST_OPTION: FIELD('broadcast')}),
     define('looks_costume', 'shadow', 'P0', {}, {COSTUME: FIELD()}),
     define('sound_sounds_menu', 'shadow', 'P0', {}, {SOUND_MENU: FIELD()}),
-    define('sensing_keyoptions', 'shadow', 'P0', {}, {KEY_OPTION: FIELD()})
+    define('sensing_keyoptions', 'shadow', 'P0', {}, {KEY_OPTION: FIELD()}),
+
+    // P1 shadows / menus
+    define('control_create_clone_of_menu', 'shadow', 'P1', {}, {CLONE_OPTION: FIELD()}),
+    define('procedures_prototype', 'shadow', 'P1'),
+    define('colour_picker', 'shadow', 'P1', {}, {COLOUR: FIELD()})
 ];
 
 export const OPCODE_METADATA: Readonly<Record<string, OpcodeMetadata>> =

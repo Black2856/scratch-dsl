@@ -52,6 +52,14 @@ export const stepThread = (runtime: Runtime, thread: Thread): void => {
                 // tick-boundary yield for every loop pass per
                 // SCRATCH_THREAD_SPEC ("forever guarantees a yield at the
                 // tick boundary").
+                //
+                // Inside a warp procedure we skip that yield and re-evaluate
+                // the loop immediately, so warp runs to completion within one
+                // tick. The MAX_STEPS_PER_TICK guard above still caps a warp
+                // `forever`, and wait/promise-wait yields are unaffected (they
+                // set the status directly and return below), so warp never
+                // swallows an explicit time wait.
+                if (thread.inWarpMode) continue;
                 thread.status = 'YIELD_TICK';
                 return;
             }

@@ -14,11 +14,19 @@ export type ThreadStatus = 'RUNNING' | 'YIELD' | 'YIELD_TICK' | 'PROMISE_WAIT' |
  * is per-block scratch space (loop counters, wait deadlines,
  * broadcast-and-wait handles) that is reset whenever the frame's current
  * block changes.
+ *
+ * `params` marks a procedure-call boundary: a non-null map holds the custom
+ * block's argument values (keyed by argument name) for `argument_reporter_*`
+ * reporters to read via Thread.getParam. `warpMode` propagates a warp
+ * procedure's "run without screen refresh" flag down its frames so the
+ * Sequencer skips the per-loop tick-boundary yield.
  */
 export interface StackFrame {
     blockId: string | null;
     isLoop: boolean;
     executionContext: Record<string, unknown>;
+    params?: Record<string, string | number | boolean> | null;
+    warpMode?: boolean;
 }
 
 let nextThreadSeq = 0;
@@ -67,6 +75,28 @@ export class Thread {
         if (!frame) return;
         frame.blockId = blockId;
         frame.executionContext = {};
+    }
+
+    /**
+     * Resolves a custom-block argument by name, walking frames from innermost
+     * out. Stops at the first procedure boundary (the first frame carrying a
+     * non-null `params` map), mirroring the official VM's Thread.getParam so
+     * an inner procedure's arguments shadow an outer one's. Returns undefined
+     * when no enclosing procedure declares the argument.
+     */
+    getParam(name: string): string | number | boolean | undefined {
+        for (let index = this.stackFrames.length - 1; index >= 0; index--) {
+            const params = this.stackFrames[index].params;
+            if (params == null) continue;
+            if (Object.prototype.hasOwnProperty.call(params, name)) return params[name];
+            return undefined;
+        }
+        return undefined;
+    }
+
+    /** True when any active frame is in warp mode (inside a warp procedure). */
+    get inWarpMode(): boolean {
+        return this.stackFrames.some(frame => frame.warpMode === true);
     }
 
     /** Resets this thread back to its top block, RUNNING, with a clean stack. */

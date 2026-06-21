@@ -1,11 +1,16 @@
 import type {Project} from '../model/Project.ts';
 import type {Stage} from '../model/Stage.ts';
 import type {Sprite} from '../model/Sprite.ts';
+import type {Clone} from '../model/Clone.ts';
 import type {ClockPort, RandomPort} from './ports.ts';
 import {SystemClockPort, SystemRandomPort} from './ports.ts';
 import {Thread} from './Thread.ts';
 import {stepThread} from './Sequencer.ts';
 import {BlockRunner} from './BlockRunner.ts';
+import {CloneManager, MAX_CLONES} from './CloneManager.ts';
+import {ProcedureManager} from './ProcedureManager.ts';
+import {PenManager} from './PenManager.ts';
+import {MonitorManager} from './MonitorManager.ts';
 import {startHats, type HatMatch} from './EventBus.ts';
 import type {RendererPort, DrawableState} from '../render/RendererPort.ts';
 import type {InputPort} from '../input/InputPort.ts';
@@ -37,28 +42,46 @@ export interface RuntimeOptions {
  * or DOM I/O — purely project model + thread scheduling, per Phase 2 scope.
  */
 export class Runtime {
+    /** Hard ceiling on live clones across the whole project (official VM parity). */
+    static readonly MAX_CLONES = MAX_CLONES;
+
     project!: Project;
     readonly clock: ClockPort;
     readonly random: RandomPort;
     readonly blockRunner: BlockRunner;
+    readonly cloneManager: CloneManager;
+    readonly procedures: ProcedureManager;
+    readonly pen: PenManager;
+    monitors: MonitorManager;
     readonly renderer?: RendererPort;
     readonly input?: InputPort;
     readonly audio?: RuntimeAudioPort;
     threads: Thread[] = [];
+    /** Live clones, kept separate from the immutable Project.sprites list. */
+    clones: Clone[] = [];
     currentMSecs = 0;
 
     constructor(options: RuntimeOptions = {}) {
         this.clock = options.clock ?? new SystemClockPort();
         this.random = options.random ?? new SystemRandomPort();
         this.blockRunner = new BlockRunner(this);
+        this.cloneManager = new CloneManager(this);
+        this.procedures = new ProcedureManager();
+        this.pen = new PenManager();
+        this.monitors = new MonitorManager();
         this.renderer = options.renderer;
         this.input = options.input;
         this.audio = options.audio;
     }
 
-    /** Attaches the project model. Block indices already live on BlockContainer, so this is a direct assignment. */
+    /**
+     * Attaches the project model. Block indices already live on
+     * BlockContainer, so this is a direct assignment; monitor visibility is
+     * seeded from the project's declared monitors.
+     */
     load(project: Project): void {
         this.project = project;
+        this.monitors = new MonitorManager(project.monitors);
     }
 
     /** Initializes the scheduler clock. Headless: no input/audio devices to start. */
@@ -77,7 +100,12 @@ export class Runtime {
         if (index !== -1) this.threads.splice(index, 1);
     }
 
-    /** Stops every thread immediately and clears the thread list. */
+    /**
+     * Stops every thread immediately, clears the thread list, and deletes all
+     * clones (releasing their drawables/sounds/pen state), matching the
+     * official VM's stop-all / green-flag behaviour. The pen layer canvas is
+     * intentionally left intact (green flag does not clear pen marks).
+     */
     stopAll(): void {
         this.audio?.stopAll();
         for (const thread of this.threads) {
@@ -85,6 +113,7 @@ export class Runtime {
             thread.status = 'DONE';
         }
         this.threads = [];
+        this.cloneManager.deleteAllClones();
     }
 
     /** Stops existing execution and starts all `event_whenflagclicked` hats. */
@@ -154,7 +183,7 @@ export class Runtime {
             }
         ];
 
-        for (const sprite of this.project.sprites) {
+        for (const sprite of [...this.project.sprites, ...this.clones]) {
             states.push({
                 targetId: sprite.id,
                 isStage: false,

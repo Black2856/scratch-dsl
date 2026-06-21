@@ -1,4 +1,6 @@
 import {Cast, LIST_ALL, LIST_INVALID} from '../cast/Cast.ts';
+import {Clone} from '../model/Clone.ts';
+import type {Sprite} from '../model/Sprite.ts';
 import type {BlockUtil, PrimitiveValue} from './BlockRunner.ts';
 
 export type CommandPrimitive = (util: BlockUtil) => void | PromiseLike<unknown>;
@@ -323,6 +325,136 @@ const soundChangeVolume: CommandPrimitive = (util) => {
 const soundVolume: ReporterPrimitive = (util) => util.target.volume;
 
 // ---------------------------------------------------------------------------
+// control: clones
+// ---------------------------------------------------------------------------
+
+/** Resolves a `create clone of` menu value to the sprite/clone to clone from. */
+const resolveCloneSource = (util: BlockUtil, name: string): Sprite | undefined => {
+    if (name === '_myself_' || name === '') {
+        const target = util.target;
+        return target.isStage ? undefined : target;
+    }
+    return util.runtime.project.sprites.find(sprite => sprite.name === name);
+};
+
+const controlCreateCloneOf: CommandPrimitive = (util) => {
+    const source = resolveCloneSource(util, Cast.toString(util.getInput('CLONE_OPTION')));
+    if (source) util.runtime.cloneManager.createClone(source);
+};
+
+const controlDeleteThisClone: CommandPrimitive = (util) => {
+    const target = util.target;
+    if (!(target instanceof Clone)) return;
+    util.runtime.cloneManager.deleteClone(target);
+    util.thread.stackFrames.length = 0;
+    util.thread.status = 'DONE';
+};
+
+// ---------------------------------------------------------------------------
+// control: custom procedures
+// ---------------------------------------------------------------------------
+
+const proceduresCall: CommandPrimitive = (util) => {
+    const proccode = util.mutation?.proccode;
+    if (typeof proccode !== 'string') return;
+    const resolved = util.runtime.procedures.resolve(util.target, proccode);
+    if (!resolved) return;
+
+    // Evaluate arguments in the caller's context (keyed by argument id) before
+    // pushing the procedure frame, then bind them by argument name.
+    const params: Record<string, PrimitiveValue> = {};
+    for (let index = 0; index < resolved.paramIds.length; index++) {
+        const name = resolved.paramNames[index];
+        if (name === undefined) continue;
+        params[name] = util.getInput(resolved.paramIds[index]);
+    }
+
+    const warpMode = resolved.warp || util.thread.inWarpMode;
+    util.thread.pushFrame(resolved.bodyId, false);
+    const frame = util.thread.peekFrame();
+    if (frame) {
+        frame.params = params;
+        frame.warpMode = warpMode;
+    }
+};
+
+const argumentReporterStringNumber: ReporterPrimitive = (util) => {
+    const name = Cast.toString(util.field('VALUE')?.value ?? '');
+    const value = util.thread.getParam(name);
+    return value === undefined ? '' : value;
+};
+
+const argumentReporterBoolean: ReporterPrimitive = (util) => {
+    const name = Cast.toString(util.field('VALUE')?.value ?? '');
+    const value = util.thread.getParam(name);
+    return value === undefined ? false : Cast.toBoolean(value);
+};
+
+// ---------------------------------------------------------------------------
+// pen
+// ---------------------------------------------------------------------------
+
+const penClear: CommandPrimitive = (util) => {
+    util.runtime.renderer?.penClear?.();
+};
+
+const penPenDown: CommandPrimitive = (util) => {
+    const target = util.target;
+    if (target.isStage) return;
+    const state = util.runtime.pen.getState(target.id);
+    state.down = true;
+    util.runtime.renderer?.penPoint?.(
+        {x: target.x, y: target.y},
+        {color: state.color, size: state.size}
+    );
+};
+
+const penPenUp: CommandPrimitive = (util) => {
+    util.runtime.pen.setDown(util.target.id, false);
+};
+
+const penStamp: CommandPrimitive = (util) => {
+    if (util.target.isStage) return;
+    util.runtime.renderer?.penStamp?.(util.target.id);
+};
+
+const penSetColorToColor: CommandPrimitive = (util) => {
+    util.runtime.pen.setColor(util.target.id, Cast.toString(util.getInput('COLOR')));
+};
+
+const penChangeSizeBy: CommandPrimitive = (util) => {
+    util.runtime.pen.changeSize(util.target.id, Cast.toNumber(util.getInput('SIZE')));
+};
+
+const penSetSizeTo: CommandPrimitive = (util) => {
+    util.runtime.pen.setSize(util.target.id, Cast.toNumber(util.getInput('SIZE')));
+};
+
+// ---------------------------------------------------------------------------
+// data: variable/list monitors
+// ---------------------------------------------------------------------------
+
+const dataShowVariable: CommandPrimitive = (util) => {
+    const id = util.field('VARIABLE')?.id;
+    if (id) util.runtime.monitors.setVisible(id, true, 'data_variable');
+};
+
+const dataHideVariable: CommandPrimitive = (util) => {
+    const id = util.field('VARIABLE')?.id;
+    if (id) util.runtime.monitors.setVisible(id, false, 'data_variable');
+};
+
+const dataShowList: CommandPrimitive = (util) => {
+    const id = util.field('LIST')?.id;
+    if (id) util.runtime.monitors.setVisible(id, true, 'data_listcontents');
+};
+
+const dataHideList: CommandPrimitive = (util) => {
+    const id = util.field('LIST')?.id;
+    if (id) util.runtime.monitors.setVisible(id, false, 'data_listcontents');
+};
+
+// ---------------------------------------------------------------------------
 // registries
 // ---------------------------------------------------------------------------
 
@@ -333,6 +465,20 @@ export const commandPrimitives: Record<string, CommandPrimitive> = {
     control_if: controlIf,
     control_if_else: controlIfElse,
     control_stop: controlStop,
+    control_create_clone_of: controlCreateCloneOf,
+    control_delete_this_clone: controlDeleteThisClone,
+    procedures_call: proceduresCall,
+    pen_clear: penClear,
+    pen_penDown: penPenDown,
+    pen_penUp: penPenUp,
+    pen_stamp: penStamp,
+    pen_setPenColorToColor: penSetColorToColor,
+    pen_changePenSizeBy: penChangeSizeBy,
+    pen_setPenSizeTo: penSetSizeTo,
+    data_showvariable: dataShowVariable,
+    data_hidevariable: dataHideVariable,
+    data_showlist: dataShowList,
+    data_hidelist: dataHideList,
     data_setvariableto: dataSetVariableTo,
     data_changevariableby: dataChangeVariableBy,
     data_addtolist: dataAddToList,
@@ -350,6 +496,8 @@ export const commandPrimitives: Record<string, CommandPrimitive> = {
 };
 
 export const reporterPrimitives: Record<string, ReporterPrimitive> = {
+    argument_reporter_string_number: argumentReporterStringNumber,
+    argument_reporter_boolean: argumentReporterBoolean,
     data_variable: dataVariable,
     data_itemoflist: dataItemOfList,
     data_itemnumoflist: dataItemNumOfList,

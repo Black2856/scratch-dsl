@@ -60,6 +60,11 @@ export class BlockUtil {
         return this.block.fields[fieldName];
     }
 
+    /** The current block's mutation record (custom-block proccode/args/warp, etc.), if any. */
+    get mutation(): Record<string, unknown> | undefined {
+        return this.block.mutation;
+    }
+
     /**
      * Pushes the given SUBSTACK input's first block as a new stack frame, so
      * the Sequencer executes the branch next. No-op if the branch is empty
@@ -83,8 +88,11 @@ export class BlockUtil {
     }
 
     getVariableValue(id: string): PrimitiveValue {
-        const variable = this.runtime.project.resolveVariable(this.target.id, id);
-        return variable ? variable.value : '';
+        // Resolve through the live target object (not Project.getTarget by id)
+        // so clones — which are not registered on Project.sprites — read their
+        // own variable copies, while normal targets keep local→stage scope.
+        const owner = resolveVariableOwner(this.runtime, this.target, id);
+        return owner ? (owner.variables.get(id) ?? '') : '';
     }
 
     setVariableValue(id: string, value: PrimitiveValue): void {
