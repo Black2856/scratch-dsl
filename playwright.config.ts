@@ -1,5 +1,7 @@
 import {defineConfig, devices} from '@playwright/test';
 
+const externalServer = process.env.PLAYWRIGHT_EXTERNAL_SERVER === '1';
+
 /**
  * Phase 3 browser integration suite. Boots tests/e2e/serve.mjs (esbuild
  * bundle of tests/e2e/entry.ts + a tiny static server) and runs only against
@@ -9,7 +11,7 @@ export default defineConfig({
     testDir: 'tests/e2e',
     fullyParallel: true,
     timeout: 30000,
-    webServer: {
+    webServer: externalServer ? undefined : {
         command: 'node tests/e2e/serve.mjs',
         url: 'http://localhost:3210/harness.html',
         reuseExistingServer: true,

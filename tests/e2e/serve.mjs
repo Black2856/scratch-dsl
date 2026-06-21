@@ -13,7 +13,7 @@ const PORT = 3210;
  * the Playwright webServer command (see playwright.config.ts) so browser
  * specs can exercise the same TypeScript sources as the node:test suite.
  */
-async function buildBundle() {
+function buildBundle() {
     // NOTE: esbuild's `globalName` option declares `var <name> = (iife)()` at
     // the *outer* scope. Since entry.ts already assigns `window.App = App`
     // itself (see entry.ts), and a top-level `var App` IS `window.App` in a
@@ -21,7 +21,7 @@ async function buildBundle() {
     // overwrite our real assignment with the IIFE's return value (undefined,
     // since entry.ts has no module exports). So `globalName` is intentionally
     // omitted here; the bundle is a plain IIFE that sets window.App itself.
-    const result = await esbuild.build({
+    const result = esbuild.buildSync({
         entryPoints: [path.join(__dirname, 'entry.ts')],
         bundle: true,
         format: 'iife',
@@ -39,7 +39,7 @@ const CONTENT_TYPES = {
 };
 
 async function main() {
-    let bundleCache = await buildBundle();
+    const bundleCache = buildBundle();
 
     const server = http.createServer(async (req, res) => {
         try {
@@ -72,4 +72,7 @@ async function main() {
     });
 }
 
-main();
+main().catch(error => {
+    console.error(error);
+    process.exitCode = 1;
+});

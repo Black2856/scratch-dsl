@@ -37,7 +37,7 @@ export class Target {
     readonly currentCostume: number;
     readonly costumes: DslCostume[];
     readonly sounds: DslSound[];
-    readonly volume: number;
+    volume: number;
     readonly layerOrder: number;
 
     constructor(options: TargetOptions) {
@@ -51,7 +51,20 @@ export class Target {
         this.currentCostume = options.currentCostume;
         this.costumes = [...options.costumes];
         this.sounds = [...options.sounds];
-        this.volume = options.volume;
+        this.volume = Target.clampVolume(options.volume);
         this.layerOrder = options.layerOrder;
+    }
+
+    setVolume(value: number): void {
+        this.volume = Target.clampVolume(value);
+    }
+
+    changeVolume(delta: number): void {
+        this.setVolume(this.volume + delta);
+    }
+
+    private static clampVolume(value: number): number {
+        if (!Number.isFinite(value)) return 0;
+        return Math.min(100, Math.max(0, value));
     }
 }
