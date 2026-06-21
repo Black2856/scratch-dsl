@@ -1,485 +1,647 @@
-あなたは、Scratch風の疑似ブロックシステムを HTML/CSS/JavaScript 上に実装し、それを後から Scratch 3.0 の .sb3 に変換できるようにする、上級実装エージェントです。
-目的は「音ゲー向けの Scratch 互換サブセット」を構築することです。
-不明点は推測で埋めず、未指定として扱ってください。
-出力は日本語です。
+あなたは、Scratch Foundation公式リポジトリを読み取り、HTML/CSS/JavaScript上で疑似Scratchシステム基盤を構築するための仕様書と実装計画を作成する上級実装エージェントです。
 
-# 最終目標
-- Scratch風のランタイムを HTML/JS で実装する
-- 内部座標系は Scratch 互換の 480x360 固定
-- 表示だけ CSS で拡大してレスポンシブ対応する
-- 音ゲー本体は 4 レーン縦スクロールを初期実装とする
-- 後から .sb3 を生成できるように、中間 JSON / DSL を正本にする
-- Web版と .sb3版の両方を同じ DSL から生成できる構成にする
+目的は、Scratchの完全コピーではなく、Scratch 3.0の構造にできるだけ近い「疑似Scratch Runtime / Editor基盤 / Asset管理 / .sb3生成基盤」をHTML/JS上に構築することです。
 
-# 実装上の基本方針
-- Scratch 全体を完全再現しない
-- 音ゲーに必要な Scratch 互換サブセットを優先して実装する
-- UI よりもまずランタイム、イベント、状態管理、音同期を優先する
-- HTML/JS 実装では Canvas を使用する
-- オーディオ同期は Web Audio API を使う
-- BGM と判定の真の時刻基準は AudioContext.currentTime
-- 描画・ログ・入力計測は performance.now()
-- 必要なら AudioContext.getOutputTimestamp() を使って audio clock と performance clock を対応付ける
-- DOM / Canvas 直叩きのゲームコードを乱立させず、Scratch風 API を必ず経由する
-- 実装するブロックは下記カテゴリごとに明示的な opcode / 引数 / 実行仕様を持つこと
-- 変換対象の .sb3 は Scratch VM 互換の target / blocks / variables / lists / broadcasts / costumes / sounds 構造で出力すること
+今回は特定ゲーム、音ゲー、アクションゲームなどの実装は行いません。まずScratchシステム基盤だけに集中してください。
 
-# 出力形式の要件
-- レポート形式で出力すること
-- 冒頭にエグゼクティブサマリを置くこと
-- 表形式が有効な箇所はテーブルで出力すること
-  - ブロック一覧
-  - ファイル構成
-  - 譜面JSONスキーマ
-  - 判定閾値表
-- 図が有効な箇所は Mermaid を使うこと
-  - エンティティ関係図
-  - 処理フロー
-  - オーディオ同期タイムライン
-- 分析的かつ実務的に書くこと
-- 最後にコード生成・実装開始用の作業計画を出すこと
+# 参照する公式ソース
 
-# 優先ソース
-- Scratch Foundation 公式ドキュメント
-- Scratch VM リポジトリ
-- Scratch GUI リポジトリ
-- Web Audio API の公式ドキュメント
-- MDN の AudioContext / performance.now / getOutputTimestamp ドキュメント
-- Teachable Machine は本件に直接関係する場合のみ参照すること
-- 非公式な情報は補助にとどめ、一次情報を優先すること
+以下を優先して調査してください。
 
-# 実装すべきカテゴリ
-対象カテゴリは以下の 10 個:
-- 動き
-- 見た目
-- 音
-- イベント
-- 制御
-- 調べる
-- 演算
-- 変数
-- リスト
-- ブロック定義
+* scratchfoundation/scratch-editor
+* tag: v14.1.0
+* README.md
+* AGENTS.md が存在する場合は必ず最初に読む
+* packages/scratch-vm/
+* packages/scratch-gui/
+* packages/scratch-render/
+* packages/scratch-paint/
+* packages/scratch-storage/
+* packages/scratch-svg-renderer/
+* packages/scratch-blocks/
 
-# ブロック実装要件
-各カテゴリごとに、以下を必ず整理してから実装すること:
-- ブロック名
-- 内部 opcode 名
-- 引数名
-- 引数型
-- 動作仕様
-- 戻り値
-- Web ランタイム実装方針
-- .sb3 変換方針
-- 擬似コード例
+旧 `scratchfoundation/scratch-vm` 単体リポジトリは参考資料として扱ってよいが、正本は `scratch-editor` モノレポの `packages/scratch-vm` とすること。
 
-## 音ゲー向け最小互換ブロック
-必要最低限として、以下を必ず実装すること。
+# 最初のゴール
 
-### 動き
-- x座標を [X] にする
-- y座標を [Y] にする
-- x座標を [DX] ずつ変える
-- y座標を [DY] ずつ変える
-- [DIRECTION] 度に向ける
-- [SECS] 秒で x:[X] y:[Y] へ行く
-- もし端に着いたら跳ね返る
-- x座標
-- y座標
-- 向き
+最初から実装に入らず、まず以下の仕様書を作成してください。
 
-### 見た目
-- 表示する
-- 隠す
-- コスチュームを [NAME] にする
-- 次のコスチュームにする
-- 背景を [NAME] にする
-- 大きさを [SIZE]% にする
-- 大きさを [DSIZE] ずつ変える
-- [LAYER] 層前に出す / 後ろに下げる
-- [MESSAGE] と言う
-- コスチュームの [番号/名前]
+* docs/SCRATCH_SOURCE_MAP.md
+* docs/SCRATCH_ARCHITECTURE.md
+* docs/SCRATCH_RUNTIME_SPEC.md
+* docs/SCRATCH_TARGET_SPEC.md
+* docs/SCRATCH_BLOCK_SPEC.md
+* docs/SCRATCH_THREAD_SPEC.md
+* docs/SCRATCH_EVENT_SPEC.md
+* docs/SCRATCH_RENDER_SPEC.md
+* docs/SCRATCH_ASSET_SPEC.md
+* docs/SCRATCH_EDITOR_SPEC.md
+* docs/SB3_FORMAT_SPEC.md
+* docs/IMPLEMENTATION_ROADMAP.md
 
-### 音
-- 音 [SOUND] を鳴らす
-- 音 [SOUND] が終わるまで鳴らす
-- すべての音を止める
-- 音量を [V]% にする
-- 音量を [DV] ずつ変える
-- 音量
+# このプロジェクトの目的
 
-### イベント
-- 緑の旗が押されたとき
-- [KEY] キーが押されたとき
-- このスプライトが押されたとき
-- 背景が [NAME] になったとき
-- [MSG] を送る
-- [MSG] を送って待つ
-- [MSG] を受け取ったとき
+以下を満たすScratch風システム基盤を作ること。
 
-### 制御
-- [N] 秒待つ
-- [N] 回繰り返す
-- ずっと
-- もし <COND> なら
-- もし <COND> なら でなければ
-- <COND> まで待つ
-- <COND> まで繰り返す
-- 止める [all/this script/other scripts]
-- 自分自身のクローンを作る
-- [SPRITE] のクローンを作る
-- クローンされたとき
-- このクローンを削除
+1. StageとSpriteを持つ
+2. SpriteごとにScript / Costume / Sound / Variable / Listを持つ
+3. Scratchのブロックカテゴリをできるだけ網羅する
+4. Block ASTを内部表現として扱える
+5. イベント、ブロードキャスト、スレッド、クローンを扱える
+6. Scratch風の座標系と描画システムを持つ
+7. コスチュームと音声アセットを管理できる
+8. `.sb3` の読み書き、または少なくとも `.sb3` 生成を見据えた構造にする
+9. 将来的にビジュアルブロックエディタを接続できるようにする
+10. 最初はScratch完全互換ではなく、互換性を意識した段階的実装にする
 
-### 調べる
-- マウスのx座標
-- マウスのy座標
-- マウスが押された
-- [KEY] キーが押された
-- タイマー
-- タイマーをリセット
-- [TARGET] までの距離
-- [TARGET] に触れた
-- 色 [C1] が 色 [C2] に触れた
-- [QUESTION] と聞いて待つ
-- 答え
+# 今回やらないこと
 
-### 演算
-- [A] + [B]
-- [A] - [B]
-- [A] * [B]
-- [A] / [B]
-- [A] < [B]
-- [A] = [B]
-- <A> かつ <B>
-- <A> または <B>
-- <> ではない
-- [FROM] から [TO] までの乱数
-- [S1] と [S2] をつなぐ
-- [TEXT] の [N] 文字目
-- [TEXT] の長さ
-- [NUM] を四捨五入
-- [OP] [NUM] 形式の数学関数
-  - abs
-  - floor
-  - ceiling
-  - sqrt
-  - sin
-  - cos
-  - tan
+以下は初期段階では実装しないでください。仕様上の考慮だけでよいです。
 
-### 変数
-- [VAR] を [VALUE] にする
-- [VAR] を [VALUE] ずつ変える
-- [VAR]
-- 変数 [VAR] を表示する
-- 変数 [VAR] を隠す
+* Scratch公式GUIの完全再現
+* Scratch公式ブロックエディタの完全再現
+* オンライン共有機能
+* Scratchアカウント連携
+* クラウド変数
+* 拡張機能の完全再現
+* 翻訳UIの完全再現
+* ゲーム本体の実装
+* 音ゲー固有処理
+* 大規模最適化
 
-### リスト
-- [LIST] に [ITEM] を追加する
-- [LIST] の [INDEX] 番目を削除
-- [LIST] をすべて削除
-- [LIST] の [INDEX] 番目に [ITEM] を挿入
-- [LIST] の [INDEX] 番目を [ITEM] で置き換える
-- [LIST] の [INDEX] 番目
-- [ITEM] は [LIST] の何番目
-- [LIST] の長さ
-- [LIST] に [ITEM] が含まれる
-- リスト [LIST] を表示 / 隠す
+# 調査対象
 
-### ブロック定義
-- カスタムブロック定義
-- カスタムブロック呼び出し
-- 文字列 / 数値引数
-- 真偽値引数
+## 1. packages/scratch-vm
 
-# アセット仕様
-以下について、必要プロパティ・ファイル形式・推奨解像度・命名規則を整理して実装すること。
+最重要です。以下を調査してください。
 
-## コスチューム
-- スプライト用
-- 背景用
-- 必須保存項目:
-  - name
-  - bitmapResolution
-  - dataFormat
-  - assetId
-  - md5ext
-  - rotationCenterX
-  - rotationCenterY
+* Runtime
+* Target
+* RenderedTarget
+* Sprite
+* Stage
+* Blocks
+* BlockContainer
+* Thread
+* Sequencer
+* Event
+* Broadcast
+* Clone
+* Variable
+* List
+* Procedure / custom block
+* Monitor
+* Extension
+* Keyboard / Mouse / Sensing
+* Sound
+* Serialization / Deserialization
+* `.sb3` project.jsonの構造
 
-## 音
-- BGM
-- 効果音
-- 必須保存項目:
-  - name
-  - assetId
-  - dataFormat
-  - format
-  - rate
-  - sampleCount
-  - md5ext
+重点的に見るファイル群:
 
-## ステージ
-- 背景
-- 判定ライン
-- UI
-- ステージ保存時に必要な項目:
-  - tempo
-  - videoTransparency
-  - videoState
-  - textToSpeechLanguage
+* packages/scratch-vm/src/engine/
+* packages/scratch-vm/src/blocks/
+* packages/scratch-vm/src/serialization/
+* packages/scratch-vm/src/sprites/
+* packages/scratch-vm/src/util/
+* packages/scratch-vm/src/io/
 
-## スプライト
-- visible
-- x
-- y
-- size
-- direction
-- draggable
-- rotationStyle
+## 2. packages/scratch-render
 
-## 受理形式
-- コスチューム / 背景:
-  - .svg
-  - .png
-  - .bmp
-  - .jpg
-  - .jpeg
-  - .gif
-- 音:
-  - .wav
-  - .mp3
+以下を調査してください。
 
-## 推奨命名規則
-- spr_note_tap_blue_v01.png
-- spr_judge_perfect_v01.svg
-- bgm_song_main_160bpm_v01.wav
-- sfx_hit_perfect_v01.wav
-- stg_play_bg_v01.png
-- ui_judge_line_v01.png
+* Stage描画
+* Sprite描画
+* Drawable
+* Skin
+* Costume描画
+* Layer管理
+* Pen Layer
+* Touching / collision / hit test
+* Bitmap / SVG描画
+* rotation center
+* scale / direction / visible
+* effects
 
-# 音ゲー固有仕様
-以下を必ず仕様化して実装すること。
+## 3. packages/scratch-gui
 
-## 基本
-- 4 レーン縦スクロール
-- 内部ステージは 480x360
-- judgeY の初期値は -120
-- spawnY の初期値は 180
-- laneX は設定配列で管理
-- ノーツは clone ベースで生成
+以下を調査してください。
 
-## 譜面JSON
-譜面 JSON のスキーマを定義し、バリデータも実装すること。
-最低限以下を持つ:
-- version
-- meta.title
-- meta.artist
-- meta.bpm
-- meta.offsetMs
-- meta.lanes
-- audio.file
-- timing.perfectMs
-- timing.greatMs
-- timing.goodMs
-- notes[].id
-- notes[].timeMs
-- notes[].lane
-- notes[].type
-- notes[].endTimeMs
-- notes[].sfx
+* Stage表示
+* Sprite pane
+* Costume tab
+* Sound tab
+* Code tab
+* Block toolbox
+* Variable/List monitor
+* Backdrop管理
+* Project loading/saving
+* Asset loading
+* Extension loading
 
-## 判定
-初期閾値は以下:
-- Perfect ±40ms
-- Great ±80ms
-- Good ±120ms
-- Miss それ以上
-これらは設定で変更可能にすること。
+GUI完全再現はしないが、Editor基盤設計の参考にすること。
 
-## オフセット
-- chartOffsetMs
-- userOffsetMs
-- deviceCalibMs
-の合算で有効オフセットを求めること。
+## 4. packages/scratch-blocks
 
-## 音同期
-- AudioContext.currentTime を BGM と譜面の真の時刻とする
-- performance.now を描画・ログ・入力時刻に使う
-- 必要なら AudioContext.getOutputTimestamp() で両者を対応付ける
-- 判定誤差 hitErrorMs を明示的に計算すること
-- 開始無音や decode 遅延を見越してプリロードすること
+以下を調査してください。
 
-# Scratch互換中間 JSON / DSL
-中間形式を唯一の正本にすること。
-最低限以下の概念を持つ:
-- Stage
-- Sprite
-- Variable
-- List
-- Broadcast
-- Script
-- Event
-- Step
-- Clone
-- Procedure
+* ブロック定義
+* toolbox構造
+* block category
+* block XML
+* inputs / fields
+* mutation
+* shadow block
+* procedure block
+* variable block
+* list block
 
-## 必須 step type
-- set
-- change
-- if
-- ifElse
-- forever
-- repeat
-- repeatUntil
-- wait
-- waitUntil
-- broadcast
-- broadcastAndWait
-- createClone
-- deleteClone
-- call
-- motion 系
-- looks 系
-- sound 系
-- sensing 系
-- reporter 系
+## 5. packages/scratch-paint
 
-## 変換ルール
-### HTML/JS 生成
-- Stage -> StageRuntime
-- Sprite -> SpriteRuntime
-- variables/lists -> runtime state
-- scripts -> thread / generator / scheduler
-- broadcast -> EventBus
-- forever -> frame loop
-- clone -> object pool または instance 管理
+以下を調査してください。
 
-### .sb3 生成
-- target ごとに isStage を設定
-- variables/lists/broadcasts/blocks/comments/costumes/sounds を target 化
-- blocks は opcode / inputs / fields / next / parent / shadow / topLevel / x / y / mutation を持たせる
-- broadcast は stage scope で保存
-- costume/sound は assetId / md5ext ベースで扱う
-- project.json を生成し、assets を対応付ける
-- .sb3 出力のためのパッケージングまで実装する
+* Costume編集に必要な構造
+* SVG / Bitmap costume
+* rotation center
+* canvas size
+* vector editorとの関係
 
-# 追加で有用な機能
-以下は optional ではなく、実装候補として整理すること。
-- Pen 相当の簡易描画 API
-- CloneManager
-- AssetManifest
-- List -> sb3 変換ユーティリティ
-- DebugMonitor
-- TimelineOverlay
-- HitError scatter chart
-- Performance profiling
-- Note object pooling
-- event log viewer
+## 6. packages/scratch-svg-renderer
 
-# パフォーマンス注意点
-- 毎フレーム JSON を parse しない
-- 判定ループで不要なオブジェクト生成を避ける
-- ノーツとエフェクトは object pooling を検討する
-- 描画用配列と判定用配列を分離する
-- clone 数と表示数を可視化する
-- 音再生 asset は事前 decode する
-- 480x360 内部解像度を維持し、見た目の拡大は CSS のみで行う
+以下を調査してください。
 
-# CSS 表示方針
-- canvas width=480 height=360
-- CSS の width/height で 2x 以上に拡大
-- image-rendering: pixelated を検討
-- 内部ロジックの座標系は必ず 480x360 のまま保つ
+* SVG costumeの描画
+* SVG to bitmap
+* size calculation
+* viewBox
+* rotation center
 
-# 想定ディレクトリ構成
-以下に近い構成を提案し、必要に応じて改善すること。
+## 7. packages/scratch-storage
 
-project/
-  spec/
-    scratch-rhythm.dsl.json
-    chart.schema.json
-  assets/
-    audio/
-    sprites/
-    stage/
-    ui/
-  engine/
-    StageRuntime.js
-    SpriteRuntime.js
-    VariableStore.js
-    ListStore.js
-    EventBus.js
-    ThreadRunner.js
-    CloneManager.js
-    PenCompat.js
-    SoundBridge.js
-    Renderer.js
-    Input.js
-  game/
-    ChartLoader.js
-    JudgeSystem.js
-    NoteSpawner.js
-    RhythmGame.js
-    DebugOverlay.js
-  tools/
-    generate-web.js
-    generate-sb3.js
-    pack-sb3.js
-    validate-chart.js
-  web/
-    index.html
-    style.css
-    main.js
+以下を調査してください。
 
-# 必須成果物
-- 設計レポート
-- ブロック仕様表
-- アセット仕様表
-- 譜面JSONスキーマ表
-- 判定閾値表
-- Mermaid 図
-- HTML/JS 実装計画
-- .sb3 変換計画
-- テスト計画
-- デバッグ計画
-- 実際の初期コード雛形
+* Asset管理
+* assetId
+* md5ext
+* dataFormat
+* costume asset
+* sound asset
+* project asset
+* storage helper
 
-# テスト要件
-以下のテストを提案・実装すること。
-- block execution test
-- variable/list test
-- broadcast and wait test
-- clone lifecycle test
-- chart validation test
-- timing drift test
-- hit window classification test
-- DSL -> HTML 変換 test
-- DSL -> SB3 変換 test
+# Scratchブロックカテゴリ
 
-# 実装を開始する際の順序
-推奨順で作業を分割すること。
-1. ランタイム骨格
-2. EventBus/ThreadRunner
-3. 変数・リスト
-4. 動き・見た目・音のコアブロック
-5. ChartLoader
-6. SoundBridge
-7. JudgeSystem
-8. CloneManager
-9. DebugOverlay
-10. SB3Generator
-11. pack-sb3
-12. テスト
+以下のカテゴリを仕様書化してください。
 
-# 最後にほしい出力
-- この仕様を満たすための設計レポート
-- 実装ロードマップ
-- 初期ファイル構成
-- DSL の具体例
-- chart.json の具体例
-- SB3 変換の具体例
-- すぐに作業開始できるコード雛形
+* 動き
+* 見た目
+* 音
+* イベント
+* 制御
+* 調べる
+* 演算
+* 変数
+* リスト
+* ブロック定義
+* ペン拡張
+* その他主要拡張
 
-以上を満たす形で、まずは設計レポートから出力してください。
+各カテゴリごとに、以下を表で整理してください。
+
+* Scratch上のブロック名
+* 内部opcode
+* 入力
+* field
+* shadow blockの有無
+* 戻り値の有無
+* hat / stack / reporter / boolean / cap の種別
+* 実行仕様
+* 疑似HTML/JS Runtimeでの実装方針
+* `.sb3` 生成時の対応
+* 初期実装優先度
+
+# 必ず仕様化する主要概念
+
+## Project
+
+* project name
+* targets
+* extensions
+* monitors
+* meta
+* assets
+
+## Stage
+
+* isStage
+* name
+* variables
+* lists
+* broadcasts
+* blocks
+* comments
+* currentCostume
+* costumes
+* sounds
+* volume
+* layerOrder
+* tempo
+* videoTransparency
+* videoState
+* textToSpeechLanguage
+
+## Sprite
+
+* isStage: false
+* name
+* variables
+* lists
+* broadcasts
+* blocks
+* comments
+* currentCostume
+* costumes
+* sounds
+* volume
+* layerOrder
+* visible
+* x
+* y
+* size
+* direction
+* draggable
+* rotationStyle
+
+## Costume
+
+* name
+* assetId
+* md5ext
+* dataFormat
+* bitmapResolution
+* rotationCenterX
+* rotationCenterY
+
+## Sound
+
+* name
+* assetId
+* md5ext
+* dataFormat
+* format
+* rate
+* sampleCount
+
+## Block
+
+* id
+* opcode
+* next
+* parent
+* inputs
+* fields
+* shadow
+* topLevel
+* x
+* y
+* mutation
+
+## Variable
+
+* id
+* name
+* value
+* isCloud
+* scope
+
+## List
+
+* id
+* name
+* values
+* scope
+
+## Broadcast
+
+* id
+* name
+
+## Thread
+
+* topBlock
+* target
+* stack
+* status
+* timer
+* warpMode
+* procedure context
+
+## Clone
+
+* original target
+* clone target
+* clone limit
+* clone initialization
+* delete clone
+
+# 疑似Scratch Runtimeで実装するモジュール
+
+以下のモジュール設計を作ってください。
+
+* Runtime
+* Project
+* Stage
+* Sprite
+* Target
+* BlockContainer
+* BlockRunner
+* ThreadRunner
+* Scheduler
+* EventBus
+* BroadcastManager
+* CloneManager
+* VariableStore
+* ListStore
+* ProcedureManager
+* MonitorManager
+* Renderer
+* Drawable
+* Skin
+* CostumeManager
+* SoundManager
+* AssetManager
+* InputManager
+* SensingManager
+* PenLayer
+* SB3Serializer
+* SB3Deserializer
+* SB3Packager
+* ProjectLoader
+* ProjectSaver
+* DebugOverlay
+* ErrorReporter
+
+# 座標系
+
+Scratch互換の座標系を採用してください。
+
+* Stage width: 480
+* Stage height: 360
+* center: x=0, y=0
+* left: -240
+* right: 240
+* top: 180
+* bottom: -180
+
+HTML Canvas側も内部サイズは480x360とし、CSSで拡大表示する設計にしてください。
+
+# 描画仕様
+
+以下を仕様化してください。
+
+* Canvas 2Dでの初期実装
+* Stage background
+* Sprite costume描画
+* SVG costume
+* bitmap costume
+* visible
+* x / y
+* size
+* direction
+* rotationStyle
+* layerOrder
+* graphic effects
+* pen layer
+* collision / touching判定
+* mouse touching判定
+* color touching判定は初期実装では後回しでよい
+
+# 音仕様
+
+以下を仕様化してください。
+
+* sound asset loading
+* play sound until done
+* start sound
+* stop all sounds
+* change volume
+* set volume
+* volume reporter
+* sound effects
+* Web Audio APIでの実装方針
+* 初期実装で省略する音声効果
+
+# イベント仕様
+
+以下を仕様化してください。
+
+* when green flag clicked
+* when key pressed
+* when this sprite clicked
+* when backdrop switches to
+* when greater than
+* when I receive
+* broadcast
+* broadcast and wait
+* start as clone
+
+# 制御仕様
+
+以下を仕様化してください。
+
+* wait
+* repeat
+* forever
+* if
+* if else
+* wait until
+* repeat until
+* stop all
+* stop this script
+* stop other scripts in sprite
+* create clone
+* delete this clone
+
+# 調べる仕様
+
+以下を仕様化してください。
+
+* touching
+* touching color
+* color touching color
+* distance to
+* ask and wait
+* answer
+* key pressed
+* mouse down
+* mouse x/y
+* set drag mode
+* loudness
+* timer
+* reset timer
+* current date/time
+* days since 2000
+* username
+
+初期実装で難しいものは「後回し」と明記してください。
+
+# 演算仕様
+
+以下を仕様化してください。
+
+* arithmetic
+* comparison
+* boolean
+* join
+* letter of
+* length of
+* contains
+* mod
+* round
+* math functions
+* random
+
+# 変数・リスト仕様
+
+以下を仕様化してください。
+
+* global variable
+* sprite local variable
+* cloud variableは初期実装対象外
+* list create/delete
+* add
+* delete
+* delete all
+* insert
+* replace
+* item
+* item number
+* length
+* contains
+* show/hide variable
+* show/hide list
+* monitor表示
+
+# ブロック定義仕様
+
+以下を仕様化してください。
+
+* custom block
+* procedure definition
+* procedure call
+* arguments
+* boolean argument
+* string/number argument
+* warp mode
+* mutation
+
+# .sb3仕様
+
+`.sb3` はZIPであり、少なくとも以下を含む前提で仕様化してください。
+
+* project.json
+* costume assets
+* sound assets
+
+`project.json`の以下を扱ってください。
+
+* targets
+* monitors
+* extensions
+* meta
+* variables
+* lists
+* broadcasts
+* blocks
+* comments
+* costumes
+* sounds
+
+`.sb3` 書き出しのために、内部DSLからScratch project.jsonへ変換する設計をしてください。
+
+# 中間DSL
+
+将来的にWeb版Runtimeと `.sb3` 生成の両方に使える中間DSLを設計してください。
+
+最低限、以下を含めてください。
+
+* project
+* stage
+* sprites
+* costumes
+* sounds
+* variables
+* lists
+* broadcasts
+* scripts
+* blocks
+* procedures
+* comments
+* monitors
+* assets
+* meta
+
+このDSLをこのプロジェクトの正本にし、Web Runtimeも `.sb3` 生成もこのDSLから動く設計にしてください。
+
+# 初期実装の優先度
+
+仕様書内で、各機能に優先度を付けてください。
+
+* P0: 最小Runtimeに必須
+* P1: Scratchらしさに重要
+* P2: 実用性向上
+* P3: 後回し
+* P4: 今回対象外
+
+# 推奨する初期実装範囲
+
+最初の実装は以下までにしてください。
+
+* 480x360 Stage
+* Sprite作成
+* Costume表示
+* x/y移動
+* direction
+* size
+* show/hide
+* layerOrder
+* green flag event
+* forever loop
+* wait
+* if
+* key pressed
+* mouse position
+* broadcast
+* variable
+* list
+* clone
+* simple sound play
+* simple pen
+* minimal `.sb3` project.json generation
+
+# 出力してほしいもの
+
+最初の応答ではコードを書かず、以下を出してください。
+
+1. 調査対象ファイル一覧
+2. Scratch公式ソースから読み取るべき構造
+3. 作成する仕様書一覧
+4. Scratchブロックカテゴリごとの調査方針
+5. 疑似Scratch Runtimeのモジュール構成
+6. 初期実装スコープ
+7. 後回しにする機能
+8. `.sb3` 生成で注意する点
+9. 実装ロードマップ
+
+# 重要な制約
+
+* 推測で仕様を作らない
+* 公式ソースに基づいて書く
+* 不明点は「未確認」と明記する
+* Scratch完全互換を名乗らない
+* まず仕様書を作る
+* 実装は仕様書作成後に行う
+* ゲーム固有機能は入れない
+* 音ゲー固有機能は入れない
+* UIエディタ完全再現は後回し
+* Runtime / Asset / Block / SB3 を最優先する

@@ -1,0 +1,74 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## プロジェクトの目的
+
+HTML/CSS/JavaScript 上に「疑似 Scratch 3.0 基盤」(Runtime / Editor shell / Asset 管理 / `.sb3` 生成) を、Scratch の完全コピーではなく構造的に近い形で段階的に構築する。仕様の出所は `req.txt`(製品要件)と `docs/IMPLEMENTATION_ROADMAP.md`(Phase 0〜8 のロードマップ)。
+
+**現在は Phase 0。** Phase 0 のゴールは「実行できる Scratch 風システム」ではなく「壊れた参照や曖昧な型を後段へ渡さない互換 DSL」を完成させること。`docs/IMPLEMENTATION_ROADMAP.md` に従い、依頼されない限り後続 Phase を先取り実装しない。
+
+## ビルド・テスト・開発コマンド
+
+ルートに `package.json` もビルド工程も無い。Node.js 22+ が type stripping で TypeScript を直接実行する(検証時の実機: v22.17.0)。
+
+```powershell
+# 全 validation テスト (node:test)
+node --no-warnings --experimental-strip-types --test tests/validation/*.test.ts
+
+# 単一テストファイル
+node --no-warnings --experimental-strip-types --test tests/validation/cast.test.ts
+
+# 1 ファイルの構文チェック
+node --experimental-strip-types --check src/validation/projectValidator.ts
+```
+
+ES モジュール内の相対 import は **明示的に `.ts` 拡張子を付ける**(type stripping の制約。例: `import {isValidId} from '../model/id.ts';`)。
+
+DSL 構造を変える時は JSON Schema (`schemas/project.schema.json`) と fixtures を併せて検証する。**Phase 0 のコードは DOM・Canvas・Web Audio・ZIP ライブラリに依存してはならない。**
+
+## アーキテクチャ
+
+### 上流リファレンス(読み取り専用)
+
+`scratch-editor/`(tag `v14.1.0`)と `scratch-audio/`(tag `v2.0.268`)は公式リポジトリを固定 checkout したもの。**それぞれ独立した入れ子 git リポジトリ**で、調査用の read-only ソースとして扱う(タスクが明示的に対象としない限り変更しない)。正本は `scratch-editor` モノレポの `packages/scratch-vm`。公式ソースのどこに何があるかは `docs/SCRATCH_SOURCE_MAP.md` が対応表として一次情報。
+
+### Phase 0 の検証パイプライン
+
+中心は「検証専用」のデータ層。実行エンジンは持たない。`src/validation/projectValidator.ts` の `validateProject(value)` が唯一の入口で、順序が重要:
+
+1. `validateShape` — トップレベル構造と `schemaVersion`(現在 `1.0.0` のみ受理、未知 version は拒否)。
+2. `validateTargetShape` — stage / 各 sprite と blocks 辞書の型・必須キー。
+3. **構造エラーが 1 件でもあれば意味検証へ進まず early return**(後段が型を前提にするため)。
+4. `validateSemantics` — ID 重複/形式、asset 参照整合、scope、block graph、comment。
+
+協調するモジュール:
+
+- `src/blocks/opcodeMetadata.ts` — opcode ごとの `shape`/`target`/`inputs`/`fields`/`shadow`/`priority`(P0〜P4)。`getOpcodeMetadata(opcode)` が正本のメタデータ表。新 opcode 対応はここから。
+- `src/model/id.ts` — Scratch 互換 ID 文字集合 (`isValidId`)、生成 (`generateId`)、project 内重複検出 (`findDuplicateIds`)。
+- `src/cast/Cast.ts` — Scratch 互換の number/boolean/string/compare/list-index 変換。JS の暗黙変換との差異を吸収する層なので、挙動は公式 VM 由来 fixture と一致させる(推測で変えない)。
+- `src/validation/blockGraphValidator.ts` — block graph と参照整合。dangling 参照・循環・複数 parent・到達不能・parent 不整合・top-level/`scripts` 整合・opcode メタデータ適合(input の shape、shadow opcode、必須 field)・procedure mutation(`procedures_prototype`/`procedures_call` の argumentids 対応)・変数/リスト/broadcast の scope を検査。
+
+### 設計上の不変条件
+
+- **未知 opcode はエラーで破棄せず warning として opaque 保持**(`opcode.unknown`)。後続 Phase での round-trip 保全のため。
+- broadcast 宣言は stage が所有する(sprite 側にあると `scope.broadcast-declaration`)。
+- 全 diagnostic は機械可読: `code`/`severity`/`path`/`entityId`/`opcode`/`message`。**`entityId` と `opcode` は不明でも省略せず `null` を入れる。**
+
+## コーディング規約
+
+TypeScript / ESM / 4-space インデント / セミコロン / シングルクォート。`camelCase`(関数・変数)、`PascalCase`(クラス・interface)、`UPPER_SNAKE_CASE`(不変レジストリ・定数)。diagnostic コードは dotted lowercase(例 `block.reference-dangling`)。純粋関数と明示的な export interface を優先。
+
+## テスト方針
+
+`node:test` + `node:assert/strict`。検証ルールごとに焦点を絞ったテストを追加する。fixture は `tests/fixtures/minimalProject.ts` の `createMinimalProject()` を基点にし、**検証対象のプロパティだけを変異させる**(異常系は `tests/fixtures/invalidProjects.ts`)。最低限カバーすべき拒否: dangling 参照・ID 重複・scope 違反・graph 循環・schema 不正・未対応 version。
+
+## Git
+
+History は Conventional Commits(`feat:`, `refactor:` 等)。コミットは scope を絞り命令形で。
+
+注意: 旧実装(Scratch 音ゲー: `engine/`・`web/`・`tools/` など)は `main` 上で削除途中の状態にあり、`rhythm-game` ブランチに保存されている。現行の DSL 基盤(`src/`・`schemas/`・`tests/`・`docs/`)とは別系統。
+
+## 補足
+
+`AGENTS.md` にもコントリビューションガイドがある(本ファイルと内容が重複)。両者を更新する際は齟齬が出ないようにする。

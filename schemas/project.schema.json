@@ -1,0 +1,680 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/htmlJs2sb3/project.schema.json",
+  "title": "Scratch-compatible intermediate project DSL",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "project",
+    "stage",
+    "sprites",
+    "assets",
+    "monitors",
+    "extensions",
+    "meta"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "project": {
+      "$ref": "#/$defs/projectInfo"
+    },
+    "stage": {
+      "$ref": "#/$defs/stage"
+    },
+    "sprites": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/sprite"
+      }
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/asset"
+      }
+    },
+    "monitors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/monitor"
+      }
+    },
+    "extensions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[!#%()*+,\\-./:;=?@\\[\\]^_`{|}~A-Za-z0-9]+$"
+    },
+    "scalar": {
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "projectInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "variable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "value",
+        "isCloud"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/scalar"
+        },
+        "isCloud": {
+          "const": false
+        }
+      }
+    },
+    "list": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "values"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "values": {
+          "type": "array",
+          "maxItems": 200000,
+          "items": {
+            "$ref": "#/$defs/scalar"
+          }
+        }
+      }
+    },
+    "broadcast": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value"
+      ],
+      "properties": {
+        "value": {
+          "$ref": "#/$defs/scalar"
+        },
+        "id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "block",
+        "shadow"
+      ],
+      "properties": {
+        "block": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "shadow": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "opcode",
+        "next",
+        "parent",
+        "inputs",
+        "fields",
+        "shadow",
+        "topLevel"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "opcode": {
+          "type": "string",
+          "minLength": 1
+        },
+        "next": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "parent": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "inputs": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/input"
+          }
+        },
+        "fields": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/field"
+          }
+        },
+        "shadow": {
+          "type": "boolean"
+        },
+        "topLevel": {
+          "type": "boolean"
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "mutation": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "comment": {
+          "$ref": "#/$defs/id"
+        }
+      }
+    },
+    "comment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "text",
+        "x",
+        "y",
+        "width",
+        "height",
+        "minimized"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "blockId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "text": {
+          "type": "string"
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "width": {
+          "type": "number",
+          "minimum": 0
+        },
+        "height": {
+          "type": "number",
+          "minimum": 0
+        },
+        "minimized": {
+          "type": "boolean"
+        }
+      }
+    },
+    "costume": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "assetId",
+        "dataFormat",
+        "md5ext",
+        "bitmapResolution",
+        "rotationCenterX",
+        "rotationCenterY"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "assetId": {
+          "$ref": "#/$defs/id"
+        },
+        "dataFormat": {
+          "type": "string",
+          "minLength": 1
+        },
+        "md5ext": {
+          "type": "string",
+          "minLength": 3
+        },
+        "bitmapResolution": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "rotationCenterX": {
+          "type": "number"
+        },
+        "rotationCenterY": {
+          "type": "number"
+        }
+      }
+    },
+    "sound": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "assetId",
+        "dataFormat",
+        "md5ext",
+        "format",
+        "rate",
+        "sampleCount"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "assetId": {
+          "$ref": "#/$defs/id"
+        },
+        "dataFormat": {
+          "type": "string",
+          "minLength": 1
+        },
+        "md5ext": {
+          "type": "string",
+          "minLength": 3
+        },
+        "format": {
+          "type": "string"
+        },
+        "rate": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "sampleCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "targetBase": {
+      "type": "object",
+      "required": [
+        "id",
+        "isStage",
+        "name",
+        "variables",
+        "lists",
+        "broadcasts",
+        "blocks",
+        "scripts",
+        "comments",
+        "currentCostume",
+        "costumes",
+        "sounds",
+        "volume",
+        "layerOrder"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "isStage": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "variables": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/variable"
+          }
+        },
+        "lists": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/list"
+          }
+        },
+        "broadcasts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/broadcast"
+          }
+        },
+        "blocks": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/block"
+          }
+        },
+        "scripts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "uniqueItems": true
+        },
+        "comments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/comment"
+          }
+        },
+        "currentCostume": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "costumes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/costume"
+          }
+        },
+        "sounds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sound"
+          }
+        },
+        "volume": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "layerOrder": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "stage": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/targetBase"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "tempo",
+            "videoTransparency",
+            "videoState",
+            "textToSpeechLanguage"
+          ],
+          "properties": {
+            "id": true,
+            "isStage": {
+              "const": true
+            },
+            "name": true,
+            "variables": true,
+            "lists": true,
+            "broadcasts": true,
+            "blocks": true,
+            "scripts": true,
+            "comments": true,
+            "currentCostume": true,
+            "costumes": true,
+            "sounds": true,
+            "volume": true,
+            "layerOrder": true,
+            "tempo": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "videoTransparency": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "videoState": {
+              "enum": [
+                "on",
+                "off",
+                "on-flipped"
+              ]
+            },
+            "textToSpeechLanguage": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "sprite": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/targetBase"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "visible",
+            "x",
+            "y",
+            "size",
+            "direction",
+            "draggable",
+            "rotationStyle"
+          ],
+          "properties": {
+            "id": true,
+            "isStage": {
+              "const": false
+            },
+            "name": true,
+            "variables": true,
+            "lists": true,
+            "broadcasts": true,
+            "blocks": true,
+            "scripts": true,
+            "comments": true,
+            "currentCostume": true,
+            "costumes": true,
+            "sounds": true,
+            "volume": true,
+            "layerOrder": true,
+            "visible": {
+              "type": "boolean"
+            },
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "size": {
+              "type": "number",
+              "minimum": 0
+            },
+            "direction": {
+              "type": "number"
+            },
+            "draggable": {
+              "type": "boolean"
+            },
+            "rotationStyle": {
+              "enum": [
+                "all around",
+                "left-right",
+                "don't rotate"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "dataFormat",
+        "md5ext"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "kind": {
+          "enum": [
+            "costume",
+            "sound"
+          ]
+        },
+        "dataFormat": {
+          "type": "string",
+          "minLength": 1
+        },
+        "md5ext": {
+          "type": "string",
+          "minLength": 3
+        },
+        "source": {
+          "type": "string"
+        }
+      }
+    },
+    "monitor": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "id",
+        "opcode",
+        "visible"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "opcode": {
+          "type": "string",
+          "minLength": 1
+        },
+        "visible": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}
