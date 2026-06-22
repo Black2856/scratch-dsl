@@ -10,4 +10,11 @@ export interface InputPort {
     getMouseY(): number;
     isMouseDown(): boolean;
     isKeyDown(key: string): boolean;
+    /**
+     * Drains and returns the Scratch key names pressed (keydown edge, not
+     * auto-repeat) since the previous call, so the Runtime can fire
+     * `event_whenkeypressed` hats once per physical press. Optional: a source
+     * that does not emit edges simply omits it and no key hats fire.
+     */
+    consumeKeyPresses?(): string[];
 }

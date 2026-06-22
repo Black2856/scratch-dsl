@@ -17,6 +17,19 @@ export interface DrawableState {
     costumeIndex: number;
 }
 
+/**
+ * A single variable monitor to paint as a stage overlay. Coordinates are in
+ * the official monitor space (origin top-left, +x right, +y down) so they map
+ * directly to the values stored in a project's `monitors` array.
+ */
+export interface MonitorView {
+    id: string;
+    label: string;
+    value: string;
+    x: number;
+    y: number;
+}
+
 /** A point in Scratch stage coordinates (origin centre, y-up). */
 export interface PenPoint {
     x: number;
@@ -41,6 +54,12 @@ export interface PenAttributes {
  */
 export interface RendererPort {
     renderDrawables(states: DrawableState[]): void;
+    /**
+     * Paints visible variable monitors on top of the stage for the current
+     * frame. Optional: a headless Runtime (or a renderer without monitor
+     * support) skips the readout overlay.
+     */
+    renderMonitors?(monitors: MonitorView[]): void;
     /** Clears the entire pen layer. */
     penClear?(): void;
     /** Draws a filled pen dot at `point`. */

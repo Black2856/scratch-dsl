@@ -41,6 +41,7 @@ export class CloneManager {
         this.runtime.clones.push(clone);
         this.runtime.renderer?.cloneTargetSkin?.(source.id, clone.id);
         this.runtime.pen.cloneState(source.id, clone.id);
+        this.runtime.audio?.cloneTarget?.(source.id, clone.id);
         this.startCloneHats(clone);
         return clone;
     }

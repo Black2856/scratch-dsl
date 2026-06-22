@@ -106,10 +106,13 @@ export const fencePosition = (
 
     let fy = y;
     const sy = yTop - Math.min(FENCE_WIDTH, inset);
-    if (y + bounds.bottom < -sy) {
-        fy = Math.ceil(-sy - bounds.bottom);
-    } else if (y + bounds.top > sy) {
-        fy = Math.floor(sy - bounds.top);
+    // Mirror scratch-render: moving down past the bottom clamps on the box's
+    // TOP edge; moving up past the top clamps on the BOTTOM edge. (For an
+    // asymmetric or rotated AABB top != -bottom, so these must not be swapped.)
+    if (y + bounds.top < -sy) {
+        fy = Math.ceil(-sy - bounds.top);
+    } else if (y + bounds.bottom > sy) {
+        fy = Math.floor(sy - bounds.bottom);
     }
 
     return [fx, fy];

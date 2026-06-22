@@ -16,6 +16,8 @@ export class DomInputManager implements InputPort {
     private mouseY = 0;
     private mouseDown = false;
     private readonly keysDown = new Set<string>();
+    /** Keydown edges (not auto-repeat) awaiting consumeKeyPresses(). */
+    private pendingPresses: string[] = [];
 
     private readonly onMouseMove = (event: MouseEvent): void => {
         const rect = this.canvas.getBoundingClientRect();
@@ -33,7 +35,11 @@ export class DomInputManager implements InputPort {
     };
 
     private readonly onKeyDown = (event: KeyboardEvent): void => {
-        this.keysDown.add(normalizeKey(event.key));
+        const key = normalizeKey(event.key);
+        // Only queue a press on the not-down → down transition so OS key
+        // auto-repeat does not fire `when key pressed` hats repeatedly.
+        if (!this.keysDown.has(key)) this.pendingPresses.push(key);
+        this.keysDown.add(key);
     };
 
     private readonly onKeyUp = (event: KeyboardEvent): void => {
@@ -65,6 +71,13 @@ export class DomInputManager implements InputPort {
 
     isKeyDown(key: string): boolean {
         return this.keysDown.has(key);
+    }
+
+    consumeKeyPresses(): string[] {
+        if (this.pendingPresses.length === 0) return [];
+        const drained = this.pendingPresses;
+        this.pendingPresses = [];
+        return drained;
     }
 
     /** Removes all DOM event listeners registered by this instance. */

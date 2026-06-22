@@ -24,6 +24,11 @@ export class SoundPlayer<TDecoded = unknown, TPlayback = unknown> {
         return this.playback !== null;
     }
 
+    /** The decoded buffer this player wraps, for sharing with cloned banks. */
+    get decodedBuffer(): TDecoded {
+        return this.decoded;
+    }
+
     play(volume = this.volume): void {
         this.stop();
         this.volume = clampVolume(volume);

@@ -34,11 +34,11 @@ export class Target {
     readonly variables: VariableStore;
     readonly lists: ListStore;
     readonly comments: DslComment[];
-    readonly currentCostume: number;
+    currentCostume: number;
     readonly costumes: DslCostume[];
     readonly sounds: DslSound[];
     volume: number;
-    readonly layerOrder: number;
+    layerOrder: number;
 
     constructor(options: TargetOptions) {
         this.id = options.id;
@@ -61,6 +61,19 @@ export class Target {
 
     changeVolume(delta: number): void {
         this.setVolume(this.volume + delta);
+    }
+
+    /** Sets the current costume by 0-based index, wrapping into range. No-op with no costumes. */
+    setCostume(index: number): void {
+        const count = this.costumes.length;
+        if (count === 0) return;
+        const rounded = Math.round(index);
+        if (!Number.isFinite(rounded)) return;
+        this.currentCostume = ((rounded % count) + count) % count;
+    }
+
+    setLayerOrder(order: number): void {
+        this.layerOrder = order;
     }
 
     private static clampVolume(value: number): number {

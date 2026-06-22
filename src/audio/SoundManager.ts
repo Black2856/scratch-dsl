@@ -48,6 +48,16 @@ export class SoundManager<TDecoded = unknown, TPlayback = unknown> {
         return this.banks.get(targetId)?.play(soundId);
     }
 
+    /**
+     * Gives `cloneId` its own bank sharing `sourceId`'s decoded sounds, so a
+     * runtime clone can play the source sprite's sounds (and overlap with the
+     * original and sibling clones). No-op if the source has no bank yet.
+     */
+    cloneTarget(sourceId: string, cloneId: string): void {
+        const source = this.banks.get(sourceId);
+        if (source) this.banks.set(cloneId, source.cloneInto(cloneId));
+    }
+
     setTargetVolume(targetId: string, volume: number): void {
         this.getBank(targetId).setVolume(volume);
     }

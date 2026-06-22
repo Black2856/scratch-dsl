@@ -26,9 +26,21 @@ test('fencing is symmetric on the left edge', () => {
 });
 
 test('top and bottom edges keep the drawable on stage', () => {
-    // Stage half-height 180, fence margin 15 -> sy = 165; top extent 56.
-    assert.deepEqual(fencePosition(0, 300, GLYPH_BOUNDS), [0, 109]); // 165 - 56
-    assert.deepEqual(fencePosition(0, -300, GLYPH_BOUNDS), [0, -109]);
+    // Stage half-height 180, fence margin 15 -> sy = 165. Moving up clamps on
+    // the box's bottom edge (-56), so only ~15px peeks at the top, mirroring
+    // the verified x case (set x 300 -> sx - left). This is the y analogue of
+    // 261 = 225 - (-36): set y 300 -> 165 - (-56) = 221.
+    assert.deepEqual(fencePosition(0, 300, GLYPH_BOUNDS), [0, 221]);
+    assert.deepEqual(fencePosition(0, -300, GLYPH_BOUNDS), [0, -221]);
+});
+
+test('asymmetric (rotated) AABB clamps y on the correct edge', () => {
+    // A box that extends far up (+80) but little down (-10): moving up must
+    // keep its bottom edge at sy (165), and moving down its top edge at -165.
+    const skewed: LocalBounds = {left: -20, right: 20, top: 80, bottom: -10};
+    // inset = floor(min(width=40, height=90)/2) = 20 -> margin min(15,20)=15 -> sy=165.
+    assert.deepEqual(fencePosition(0, 300, skewed), [0, 175]); // 165 - (-10)
+    assert.deepEqual(fencePosition(0, -300, skewed), [0, -245]); // -165 - 80
 });
 
 test('positions inside the fence are unchanged', () => {

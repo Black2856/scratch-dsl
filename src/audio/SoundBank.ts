@@ -54,4 +54,18 @@ export class SoundBank<TDecoded = unknown, TPlayback = unknown> {
             player.stop();
         }
     }
+
+    /**
+     * Builds an independent bank for `targetId` that shares this bank's decoded
+     * buffers but has its own (idle) SoundPlayers and volume, so a clone can
+     * play the source sprite's sounds concurrently with the original.
+     */
+    cloneInto(targetId: string): SoundBank<TDecoded, TPlayback> {
+        const clone = new SoundBank<TDecoded, TPlayback>(targetId, this.audio);
+        clone.volume = this.volume;
+        for (const [soundId, player] of this.players) {
+            clone.add(soundId, player.decodedBuffer);
+        }
+        return clone;
+    }
 }

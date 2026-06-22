@@ -1,4 +1,4 @@
-import type {DrawableState, PenAttributes, PenPoint, RendererPort} from './RendererPort.ts';
+import type {DrawableState, MonitorView, PenAttributes, PenPoint, RendererPort} from './RendererPort.ts';
 import {Drawable} from './Drawable.ts';
 import type {Skin} from './Skin.ts';
 import {STAGE_WIDTH, STAGE_HEIGHT, scratchToCanvas, directionToRadians} from './coordinates.ts';
@@ -48,20 +48,37 @@ export class CanvasRenderer implements RendererPort {
     private readonly skins = new Map<string, Skin>();
     private readonly lastStates = new Map<string, DrawableState>();
     private lastDrawOrder: string[] = [];
+    /**
+     * Device-pixel ratio of the main canvas. The main canvas backing is sized
+     * STAGE × dpr and its context is pre-scaled by dpr, so sprites/monitors are
+     * drawn at the display's real resolution (crisp). The pen layer is kept at
+     * the fixed STAGE resolution and composited with nearest-neighbour, so pen
+     * marks and stamps stay coarse (lower-resolution, like Scratch's pen) while
+     * sprites remain high-resolution.
+     */
+    private readonly dpr: number;
 
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
-        this.canvas.width = STAGE_WIDTH;
-        this.canvas.height = STAGE_HEIGHT;
+        const view = canvas.ownerDocument?.defaultView
+            ?? (typeof window !== 'undefined' ? window : undefined);
+        const ratio = view?.devicePixelRatio;
+        this.dpr = typeof ratio === 'number' && ratio > 0 ? ratio : 1;
+
+        this.canvas.width = Math.round(STAGE_WIDTH * this.dpr);
+        this.canvas.height = Math.round(STAGE_HEIGHT * this.dpr);
         const ctx = canvas.getContext('2d');
         if (!ctx) {
             throw new Error('CanvasRenderer requires a 2D rendering context.');
         }
         this.ctx = ctx;
+        // Draw in fixed 480x360 stage logical units; the dpr scale maps them to
+        // the higher-resolution backing so sprites/monitors render crisply.
+        this.ctx.scale(this.dpr, this.dpr);
 
-        // Independent offscreen pen layer (the official renderer's PenSkin):
-        // persists across frames and composites between the stage background
-        // and the sprite group.
+        // Independent offscreen pen layer (the official renderer's PenSkin),
+        // kept at the fixed STAGE resolution (not dpr-scaled) on purpose so the
+        // pen stays coarse when composited onto the hi-res main canvas.
         const penCanvas = (canvas.ownerDocument ?? document).createElement('canvas');
         penCanvas.width = STAGE_WIDTH;
         penCanvas.height = STAGE_HEIGHT;
@@ -71,6 +88,19 @@ export class CanvasRenderer implements RendererPort {
         }
         this.penCanvas = penCanvas;
         this.penCtx = penCtx;
+    }
+
+    /**
+     * Composites the fixed-resolution pen layer onto the (dpr-scaled) main
+     * canvas with smoothing disabled, so the STAGE-sized pen image is scaled up
+     * with nearest-neighbour — keeping pen marks/stamps coarse against the
+     * high-resolution sprites.
+     */
+    private compositePen(): void {
+        this.ctx.save();
+        this.ctx.imageSmoothingEnabled = false;
+        this.ctx.drawImage(this.penCanvas, 0, 0, STAGE_WIDTH, STAGE_HEIGHT);
+        this.ctx.restore();
     }
 
     /** Assigns (or replaces) the Skin used to paint `targetId`'s drawable. */
@@ -91,7 +121,7 @@ export class CanvasRenderer implements RendererPort {
         let penComposited = false;
         for (const state of sorted) {
             if (!penComposited && !state.isStage) {
-                this.ctx.drawImage(this.penCanvas, 0, 0);
+                this.compositePen();
                 penComposited = true;
             }
             this.lastStates.set(state.targetId, state);
@@ -99,7 +129,43 @@ export class CanvasRenderer implements RendererPort {
             this.lastDrawOrder.push(state.targetId);
             this.paintDrawable(this.ctx, state);
         }
-        if (!penComposited) this.ctx.drawImage(this.penCanvas, 0, 0);
+        if (!penComposited) this.compositePen();
+    }
+
+    /**
+     * Draws the variable-monitor readout overlay on top of the current frame,
+     * approximating the official monitor look (orange value pill on a grey
+     * label box). Monitor coordinates are top-left origin, matching the
+     * project `monitors` array; values are pre-resolved by the Runtime.
+     */
+    renderMonitors(monitors: MonitorView[]): void {
+        const ctx = this.ctx;
+        ctx.save();
+        ctx.textBaseline = 'middle';
+        ctx.font = '12px sans-serif';
+        const height = 18;
+        const padding = 6;
+        for (const monitor of monitors) {
+            const label = monitor.label;
+            const value = monitor.value;
+            const labelWidth = ctx.measureText(label).width;
+            const valueWidth = Math.max(ctx.measureText(value).width, 16);
+            const x = Math.max(0, monitor.x);
+            const y = Math.max(0, monitor.y);
+            const boxWidth = labelWidth + valueWidth + padding * 3;
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+            ctx.fillRect(x, y, boxWidth, height);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(label, x + padding, y + height / 2);
+
+            const pillX = x + labelWidth + padding * 2;
+            ctx.fillStyle = '#ff8c1a';
+            ctx.fillRect(pillX, y + 2, valueWidth + padding, height - 4);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(value, pillX + padding / 2, y + height / 2);
+        }
+        ctx.restore();
     }
 
     penClear(): void {

@@ -12,7 +12,7 @@ import {ProcedureManager} from './ProcedureManager.ts';
 import {PenManager} from './PenManager.ts';
 import {MonitorManager} from './MonitorManager.ts';
 import {startHats, type HatMatch} from './EventBus.ts';
-import type {RendererPort, DrawableState} from '../render/RendererPort.ts';
+import type {RendererPort, DrawableState, MonitorView} from '../render/RendererPort.ts';
 import type {InputPort} from '../input/InputPort.ts';
 import type {RuntimeAudioPort} from '../audio/AudioPort.ts';
 
@@ -141,6 +141,14 @@ export class Runtime {
     tick(): void {
         this.currentMSecs = this.clock.now();
 
+        // Fire `when key pressed` hats once per physical keydown edge drained
+        // from the input port, before stepping, so the new hat threads run in
+        // this same tick. 'any' hats are matched inside EventBus.hatMatches.
+        const presses = this.input?.consumeKeyPresses?.() ?? [];
+        for (const key of presses) {
+            this.startHats('event_whenkeypressed', {keyOption: key}, true);
+        }
+
         for (const thread of this.threads) {
             if (thread.status === 'YIELD_TICK') {
                 thread.status = 'RUNNING';
@@ -163,7 +171,56 @@ export class Runtime {
 
         if (this.renderer) {
             this.renderer.renderDrawables(this.collectDrawableStates());
+            this.renderer.renderMonitors?.(this.collectMonitorViews());
         }
+    }
+
+    /**
+     * Resolves a variable's current value by name (the form a monitor's
+     * `params.VARIABLE` carries). When `spriteName` is given the local sprite
+     * is searched first; otherwise the Stage (global) then every Sprite is
+     * scanned. Returns undefined when no target declares the name.
+     */
+    private resolveVariableValueByName(
+        name: string,
+        spriteName: string | null
+    ): string | number | boolean | undefined {
+        if (spriteName) {
+            const sprite = this.project.sprites.find(candidate => candidate.name === spriteName);
+            const entry = sprite?.variables.getByName(name);
+            if (entry) return entry.value;
+        }
+        const stageEntry = this.project.stage.variables.getByName(name);
+        if (stageEntry) return stageEntry.value;
+        for (const sprite of this.project.sprites) {
+            const entry = sprite.variables.getByName(name);
+            if (entry) return entry.value;
+        }
+        return undefined;
+    }
+
+    /**
+     * Builds the visible variable-monitor overlay for the current frame from
+     * the project's declared `monitors` and live MonitorManager visibility
+     * (keyed by the monitor's own id). Only `data_variable` monitors are
+     * painted; list monitors are out of scope for the canvas overlay.
+     */
+    private collectMonitorViews(): MonitorView[] {
+        const views: MonitorView[] = [];
+        for (const monitor of this.project.monitors) {
+            if (monitor.opcode !== 'data_variable') continue;
+            if (!this.monitors.isVisible(monitor.id)) continue;
+            const params = monitor.params as Record<string, unknown> | undefined;
+            const name = typeof params?.VARIABLE === 'string' ? params.VARIABLE : null;
+            if (!name) continue;
+            const spriteName = typeof monitor.spriteName === 'string' ? monitor.spriteName : null;
+            const value = this.resolveVariableValueByName(name, spriteName);
+            if (value === undefined) continue;
+            const x = typeof monitor.x === 'number' ? monitor.x : 0;
+            const y = typeof monitor.y === 'number' ? monitor.y : 0;
+            views.push({id: monitor.id, label: name, value: String(value), x, y});
+        }
+        return views;
     }
 
     /** Builds the per-tick DrawableState snapshot (stage + every sprite) handed to the RendererPort, if any. */

@@ -55,11 +55,125 @@ const motionChangeYBy: CommandPrimitive = (util) => {
     util.setXY(util.target.x, util.target.y + Cast.toNumber(util.getInput('DY')));
 };
 
+const motionTurnRight: CommandPrimitive = (util) => {
+    if (util.target.isStage) return;
+    util.target.setDirection(util.target.direction + Cast.toNumber(util.getInput('DEGREES')));
+};
+
+const motionTurnLeft: CommandPrimitive = (util) => {
+    if (util.target.isStage) return;
+    util.target.setDirection(util.target.direction - Cast.toNumber(util.getInput('DEGREES')));
+};
+
+const motionPointInDirection: CommandPrimitive = (util) => {
+    if (util.target.isStage) return;
+    util.target.setDirection(Cast.toNumber(util.getInput('DIRECTION')));
+};
+
+const motionSetRotationStyle: CommandPrimitive = (util) => {
+    if (util.target.isStage) return;
+    const style = Cast.toString(util.field('STYLE')?.value ?? '');
+    if (style === 'all around' || style === 'left-right' || style === "don't rotate") {
+        util.target.setRotationStyle(style);
+    }
+};
+
 const motionXPosition: ReporterPrimitive = (util) =>
     util.target.isStage ? 0 : util.target.x;
 
 const motionYPosition: ReporterPrimitive = (util) =>
     util.target.isStage ? 0 : util.target.y;
+
+const motionDirection: ReporterPrimitive = (util) =>
+    util.target.isStage ? 90 : util.target.direction;
+
+// ---------------------------------------------------------------------------
+// looks
+// ---------------------------------------------------------------------------
+
+const looksShow: CommandPrimitive = (util) => {
+    if (util.target.isStage) return;
+    util.target.setVisible(true);
+};
+
+const looksHide: CommandPrimitive = (util) => {
+    if (util.target.isStage) return;
+    util.target.setVisible(false);
+};
+
+const looksSetSizeTo: CommandPrimitive = (util) => {
+    if (util.target.isStage) return;
+    util.target.setSize(Cast.toNumber(util.getInput('SIZE')));
+};
+
+const looksChangeSizeBy: CommandPrimitive = (util) => {
+    if (util.target.isStage) return;
+    util.target.setSize(util.target.size + Cast.toNumber(util.getInput('CHANGE')));
+};
+
+const looksSwitchCostumeTo: CommandPrimitive = (util) => {
+    const costumes = util.target.costumes;
+    if (costumes.length === 0) return;
+    const requested = util.getInput('COSTUME');
+    if (typeof requested === 'string') {
+        const byName = costumes.findIndex(costume => costume.name === requested);
+        if (byName !== -1) {
+            util.target.setCostume(byName);
+            return;
+        }
+        if (requested === 'next costume') {
+            util.target.setCostume(util.target.currentCostume + 1);
+            return;
+        }
+        if (requested === 'previous costume') {
+            util.target.setCostume(util.target.currentCostume - 1);
+            return;
+        }
+        const numeric = Number(requested);
+        if (!Number.isNaN(numeric)) util.target.setCostume(Math.floor(numeric) - 1);
+        return;
+    }
+    util.target.setCostume(Math.floor(Cast.toNumber(requested)) - 1);
+};
+
+const looksNextCostume: CommandPrimitive = (util) => {
+    util.target.setCostume(util.target.currentCostume + 1);
+};
+
+/**
+ * Reorders the non-stage draw targets (sprites + live clones) so `util.target`
+ * moves by `delta` layers (clamped to the ends), then renumbers layerOrder
+ * 1..n with the Stage implicitly at 0. Positive delta moves toward the front.
+ */
+const moveLayer = (util: BlockUtil, delta: number): void => {
+    const target = util.target;
+    if (target.isStage) return;
+    const ordered: Sprite[] = [...util.runtime.project.sprites, ...util.runtime.clones]
+        .slice()
+        .sort((a, b) => a.layerOrder - b.layerOrder);
+    const current = ordered.indexOf(target);
+    if (current === -1) return;
+    let next = current + delta;
+    if (next < 0) next = 0;
+    if (next > ordered.length - 1) next = ordered.length - 1;
+    ordered.splice(current, 1);
+    ordered.splice(next, 0, target);
+    ordered.forEach((entry, index) => entry.setLayerOrder(index + 1));
+};
+
+const looksGoToFrontBack: CommandPrimitive = (util) => {
+    if (util.target.isStage) return;
+    const where = Cast.toString(util.field('FRONT_BACK')?.value ?? 'front');
+    const span = util.runtime.project.sprites.length + util.runtime.clones.length;
+    moveLayer(util, where === 'back' ? -span : span);
+};
+
+const looksGoForwardBackwardLayers: CommandPrimitive = (util) => {
+    if (util.target.isStage) return;
+    const amount = Math.round(Cast.toNumber(util.getInput('NUM')));
+    const direction = Cast.toString(util.field('FORWARD_BACKWARD')?.value ?? 'forward');
+    moveLayer(util, direction === 'backward' ? -amount : amount);
+};
 
 /**
  * Resolves the broadcast id referenced by an `event_broadcast`/
@@ -486,6 +600,94 @@ const penSetSizeTo: CommandPrimitive = (util) => {
 };
 
 // ---------------------------------------------------------------------------
+// operators
+// ---------------------------------------------------------------------------
+
+const operatorAdd: ReporterPrimitive = (util) =>
+    Cast.toNumber(util.getInput('NUM1')) + Cast.toNumber(util.getInput('NUM2'));
+
+const operatorSubtract: ReporterPrimitive = (util) =>
+    Cast.toNumber(util.getInput('NUM1')) - Cast.toNumber(util.getInput('NUM2'));
+
+const operatorMultiply: ReporterPrimitive = (util) =>
+    Cast.toNumber(util.getInput('NUM1')) * Cast.toNumber(util.getInput('NUM2'));
+
+const operatorDivide: ReporterPrimitive = (util) =>
+    Cast.toNumber(util.getInput('NUM1')) / Cast.toNumber(util.getInput('NUM2'));
+
+/**
+ * Random in [FROM, TO]. Matches the official VM: when both operands read as
+ * integers the result is an inclusive integer, otherwise a uniform float.
+ * Operand order is normalised so FROM > TO still works.
+ */
+const operatorRandom: ReporterPrimitive = (util) => {
+    const fromRaw = util.getInput('FROM');
+    const toRaw = util.getInput('TO');
+    const nFrom = Cast.toNumber(fromRaw);
+    const nTo = Cast.toNumber(toRaw);
+    const low = Math.min(nFrom, nTo);
+    const high = Math.max(nFrom, nTo);
+    if (low === high) return low;
+    const next = util.runtime.random.random();
+    if (Cast.isInt(fromRaw) && Cast.isInt(toRaw)) {
+        return low + Math.floor(next * (high - low + 1));
+    }
+    return (next * (high - low)) + low;
+};
+
+const operatorLt: ReporterPrimitive = (util) =>
+    Cast.compare(util.getInput('OPERAND1'), util.getInput('OPERAND2')) < 0;
+
+const operatorEquals: ReporterPrimitive = (util) =>
+    Cast.compare(util.getInput('OPERAND1'), util.getInput('OPERAND2')) === 0;
+
+const operatorGt: ReporterPrimitive = (util) =>
+    Cast.compare(util.getInput('OPERAND1'), util.getInput('OPERAND2')) > 0;
+
+const operatorAnd: ReporterPrimitive = (util) =>
+    Cast.toBoolean(util.getInput('OPERAND1')) && Cast.toBoolean(util.getInput('OPERAND2'));
+
+const operatorOr: ReporterPrimitive = (util) =>
+    Cast.toBoolean(util.getInput('OPERAND1')) || Cast.toBoolean(util.getInput('OPERAND2'));
+
+const operatorNot: ReporterPrimitive = (util) =>
+    !Cast.toBoolean(util.getInput('OPERAND'));
+
+const operatorJoin: ReporterPrimitive = (util) =>
+    Cast.toString(util.getInput('STRING1')) + Cast.toString(util.getInput('STRING2'));
+
+const operatorLetterOf: ReporterPrimitive = (util) => {
+    const text = Cast.toString(util.getInput('STRING'));
+    const index = Cast.toNumber(util.getInput('LETTER'));
+    if (index < 1 || index > text.length) return '';
+    return text.charAt(index - 1);
+};
+
+const operatorLength: ReporterPrimitive = (util) =>
+    Cast.toString(util.getInput('STRING')).length;
+
+const operatorContains: ReporterPrimitive = (util) => {
+    const haystack = Cast.toString(util.getInput('STRING1')).toLowerCase();
+    const needle = Cast.toString(util.getInput('STRING2')).toLowerCase();
+    return haystack.includes(needle);
+};
+
+// ---------------------------------------------------------------------------
+// sensing
+// ---------------------------------------------------------------------------
+
+const sensingMouseX: ReporterPrimitive = (util) => util.runtime.input?.getMouseX() ?? 0;
+
+const sensingMouseY: ReporterPrimitive = (util) => util.runtime.input?.getMouseY() ?? 0;
+
+const sensingMouseDown: ReporterPrimitive = (util) => util.runtime.input?.isMouseDown() ?? false;
+
+const sensingKeyPressed: ReporterPrimitive = (util) => {
+    const key = Cast.toString(util.getInput('KEY_OPTION'));
+    return util.runtime.input?.isKeyDown(key) ?? false;
+};
+
+// ---------------------------------------------------------------------------
 // data: variable/list monitors
 // ---------------------------------------------------------------------------
 
@@ -520,6 +722,18 @@ export const commandPrimitives: Record<string, CommandPrimitive> = {
     motion_sety: motionSetY,
     motion_changexby: motionChangeXBy,
     motion_changeyby: motionChangeYBy,
+    motion_turnright: motionTurnRight,
+    motion_turnleft: motionTurnLeft,
+    motion_pointindirection: motionPointInDirection,
+    motion_setrotationstyle: motionSetRotationStyle,
+    looks_show: looksShow,
+    looks_hide: looksHide,
+    looks_setsizeto: looksSetSizeTo,
+    looks_changesizeby: looksChangeSizeBy,
+    looks_switchcostumeto: looksSwitchCostumeTo,
+    looks_nextcostume: looksNextCostume,
+    looks_gotofrontback: looksGoToFrontBack,
+    looks_goforwardbackwardlayers: looksGoForwardBackwardLayers,
     control_wait: controlWait,
     control_repeat: controlRepeat,
     control_forever: controlForever,
@@ -559,6 +773,7 @@ export const commandPrimitives: Record<string, CommandPrimitive> = {
 export const reporterPrimitives: Record<string, ReporterPrimitive> = {
     motion_xposition: motionXPosition,
     motion_yposition: motionYPosition,
+    motion_direction: motionDirection,
     argument_reporter_string_number: argumentReporterStringNumber,
     argument_reporter_boolean: argumentReporterBoolean,
     data_variable: dataVariable,
@@ -567,5 +782,24 @@ export const reporterPrimitives: Record<string, ReporterPrimitive> = {
     data_lengthoflist: dataLengthOfList,
     data_listcontainsitem: dataListContainsItem,
     data_listcontents: dataListContents,
-    sound_volume: soundVolume
+    sound_volume: soundVolume,
+    operator_add: operatorAdd,
+    operator_subtract: operatorSubtract,
+    operator_multiply: operatorMultiply,
+    operator_divide: operatorDivide,
+    operator_random: operatorRandom,
+    operator_lt: operatorLt,
+    operator_equals: operatorEquals,
+    operator_gt: operatorGt,
+    operator_and: operatorAnd,
+    operator_or: operatorOr,
+    operator_not: operatorNot,
+    operator_join: operatorJoin,
+    operator_letter_of: operatorLetterOf,
+    operator_length: operatorLength,
+    operator_contains: operatorContains,
+    sensing_mousex: sensingMouseX,
+    sensing_mousey: sensingMouseY,
+    sensing_mousedown: sensingMouseDown,
+    sensing_keypressed: sensingKeyPressed
 };

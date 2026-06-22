@@ -207,3 +207,27 @@ test('loadProjectSounds resolves AssetManager bytes into target SoundBanks', asy
     assert.ok(manager.play(dsl.sprites[0].id, 'sound-pop'));
     assert.deepEqual(audio.decodeCalls[0], new Uint8Array([7, 8]));
 });
+
+test('cloneTarget gives a clone its own bank that can play and overlap the source sounds', async () => {
+    const audio = new FakeAudioPort();
+    const manager = new SoundManager(audio);
+
+    // Load one sound onto the source target and play it.
+    await manager.loadSound('actor', 'sound-pop', 'asset-pop', new Uint8Array([1, 2]));
+    const sourcePlay = manager.play('actor', 'sound-pop');
+    assert.ok(sourcePlay, 'source target should play its sound');
+
+    // Before cloning, the clone id has no bank and cannot play.
+    assert.equal(manager.play('clone-1', 'sound-pop'), undefined);
+
+    // After cloneTarget, the clone can play the same sound concurrently.
+    manager.cloneTarget('actor', 'clone-1');
+    const clonePlay = manager.play('clone-1', 'sound-pop');
+    assert.ok(clonePlay, 'clone should play the source sound after cloneTarget');
+
+    // Two distinct, simultaneous playbacks exist (overlap -> louder), and the
+    // clone shares the decoded buffer (only one decode happened overall).
+    const live = audio.playbacks.filter(playback => !playback.stopped);
+    assert.equal(live.length, 2, 'original and clone playbacks overlap');
+    assert.equal(audio.decodeCalls.length, 1, 'cloneTarget reuses the decoded buffer (no re-decode)');
+});

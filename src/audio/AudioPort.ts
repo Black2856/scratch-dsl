@@ -25,6 +25,12 @@ export interface RuntimeAudioPort {
     setTargetVolume(targetId: string, volume: number): void;
     stopTarget(targetId: string): void;
     stopAll(): void;
+    /**
+     * Clones the source target's sound bank onto a new clone id so the clone
+     * can play the source sprite's sounds. Optional: a headless Runtime with no
+     * audio simply skips it (clones stay silent).
+     */
+    cloneTarget?(sourceId: string, cloneId: string): void;
 }
 
 export const clampVolume = (volume: number): number => {
