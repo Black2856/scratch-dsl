@@ -1,8 +1,10 @@
 import {createServer, request as httpRequest, type IncomingMessage, type ServerResponse} from 'node:http';
 import {readFile} from 'node:fs/promises';
 import {spawn} from 'node:child_process';
+import {createRequire} from 'node:module';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import esbuild from 'esbuild';
 
 import {packageSb3} from '../src/sb3/sb3Packager.ts';
 import {loadWorkspaceProject, WorkspaceProjectError, repositoryRoot} from './workspaceProject.ts';
@@ -32,6 +34,27 @@ if (!projectName) {
     process.exitCode = 1;
 }
 
+// scratch-audio ships no browser bundle, so bundle its src on demand (cached)
+// into an `AudioEngine` global. `events` is its only Node builtin dependency.
+const require = createRequire(import.meta.url);
+let audioBundle: Promise<string> | null = null;
+const bundleAudioEngine = (): Promise<string> => {
+    if (!audioBundle) {
+        audioBundle = esbuild.build({
+            entryPoints: [path.join(repositoryRoot, 'node_modules/scratch-audio/src/index.js')],
+            bundle: true,
+            format: 'iife',
+            globalName: 'AudioEngine',
+            platform: 'browser',
+            write: false,
+            logLevel: 'silent',
+            define: {'process.env.NODE_ENV': '"production"', global: 'globalThis'},
+            alias: {events: require.resolve('events')}
+        }).then(result => result.outputFiles[0].text);
+    }
+    return audioBundle;
+};
+
 const send = (res: ServerResponse, status: number, type: string, body: string | Uint8Array): void => {
     res.writeHead(status, {'Content-Type': type, 'Cache-Control': 'no-store'});
     res.end(body);
@@ -53,6 +76,10 @@ const handle = async (req: IncomingMessage, res: ServerResponse): Promise<void> 
     }
     if (pathname === '/' || pathname === '/index.html') {
         send(res, 200, 'text/html; charset=utf-8', await readFile(playerHtml));
+        return;
+    }
+    if (pathname === '/vendor/scratch-audio.js') {
+        send(res, 200, 'application/javascript', await bundleAudioEngine());
         return;
     }
     if (pathname.startsWith('/vendor/')) {

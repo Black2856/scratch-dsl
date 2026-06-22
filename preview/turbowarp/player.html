@@ -49,6 +49,7 @@
 <script src="/vendor/scratch-render.js"></script>
 <script src="/vendor/scratch-svg-renderer.js"></script>
 <script src="/vendor/scratch-storage.js"></script>
+<script src="/vendor/scratch-audio.js"></script>
 <script src="/vendor/scratch-vm.js"></script>
 <script>
 (async () => {
@@ -72,6 +73,10 @@
         window.vm = vm;
         const storage = new Storage();
         vm.attachStorage(storage);
+
+        // Audio engine so sound blocks (and pitch/pan) actually play.
+        const AudioEngine = pick(window.AudioEngine, 'AudioEngine');
+        if (AudioEngine) vm.attachAudioEngine(new AudioEngine());
 
         // SVG/bitmap costume adapters (needed for SVG sprites like Abby).
         if (SVG) {

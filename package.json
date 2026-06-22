@@ -18,6 +18,8 @@
     "@scratch/scratch-render": "^14.1.0",
     "@scratch/scratch-vm": "^14.1.0",
     "esbuild": "^0.24.0",
+    "events": "^3.3.0",
+    "scratch-audio": "^2.0.268",
     "scratch-parser": "^6.0.0",
     "scratch-storage": "^6.2.1",
     "scratch-svg-renderer": "^2.4.7"
