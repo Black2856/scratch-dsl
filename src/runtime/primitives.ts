@@ -22,20 +22,12 @@ const motionMoveSteps: CommandPrimitive = (util) => {
     if (util.target.isStage) return;
     const steps = Cast.toNumber(util.getInput('STEPS'));
     const radians = util.target.direction * Math.PI / 180;
-    const from = {x: util.target.x, y: util.target.y};
-    // setXY applies Scratch fencing; the pen segment ends at the fenced
-    // position so the mark matches where the sprite actually lands.
-    util.setXY(from.x + (steps * Math.sin(radians)), from.y + (steps * Math.cos(radians)));
-    const to = {x: util.target.x, y: util.target.y};
-
-    const pen = util.runtime.pen.getState(util.target.id);
-    if (pen.down) {
-        util.runtime.renderer?.penLine?.(
-            from,
-            to,
-            {color: pen.color, size: pen.size}
-        );
-    }
+    // setXY applies fencing and draws the pen segment (when pen is down) at the
+    // fenced landing position, so the mark matches where the sprite ends up.
+    util.setXY(
+        util.target.x + (steps * Math.sin(radians)),
+        util.target.y + (steps * Math.cos(radians))
+    );
 };
 
 const motionGotoXY: CommandPrimitive = (util) => {
@@ -609,7 +601,12 @@ const penPenUp: CommandPrimitive = (util) => {
 
 const penStamp: CommandPrimitive = (util) => {
     if (util.target.isStage) return;
-    util.runtime.renderer?.penStamp?.(util.target.id);
+    // Stamp at the sprite's *current* position/costume (not the last rendered
+    // frame), so a stamp right after a move lands where the sprite now is.
+    util.runtime.renderer?.penStamp?.(
+        util.target.id,
+        util.runtime.spriteDrawableState(util.target)
+    );
 };
 
 const penSetColorToColor: CommandPrimitive = (util) => {

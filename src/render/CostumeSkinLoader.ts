@@ -34,7 +34,8 @@ export const createCostumeSkin = async (
     return new BitmapSkin(
         image,
         costume.rotationCenterX / resolution,
-        costume.rotationCenterY / resolution
+        costume.rotationCenterY / resolution,
+        1 / resolution
     );
 };
 
@@ -52,5 +53,23 @@ export const loadCurrentCostumeSkins = async (
         const costume = target.costumes[target.currentCostume];
         if (!costume) return;
         renderer.registerSkin(target.id, await createCostumeSkin(assets, costume));
+    }));
+};
+
+/**
+ * Decodes and registers *every* costume Skin for each target, so `next costume`
+ * / `switch backdrop` blocks repaint with the correct image (the per-frame
+ * costume index selects the skin). Costume-less targets are skipped.
+ */
+export const loadAllCostumeSkins = async (
+    project: Project,
+    assets: AssetManager<DecodedImage, unknown>,
+    renderer: CanvasRenderer
+): Promise<void> => {
+    const targets = [project.stage, ...project.sprites];
+    await Promise.all(targets.map(async target => {
+        if (target.costumes.length === 0) return;
+        const skins = await Promise.all(target.costumes.map(costume => createCostumeSkin(assets, costume)));
+        renderer.registerCostumeSkins(target.id, skins);
     }));
 };

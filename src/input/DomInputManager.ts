@@ -1,6 +1,8 @@
-import type {InputPort} from './InputPort.ts';
-import {clientToScratch} from '../render/coordinates.ts';
+import type {InputPort, PointerTransition} from './InputPort.ts';
+import {clientToScratch, STAGE_WIDTH, STAGE_HEIGHT} from '../render/coordinates.ts';
 import {normalizeKey} from './keyNames.ts';
+
+const DRAG_THRESHOLD = 3; // px in stage space before a press counts as a drag
 
 /**
  * Browser-only InputPort implementation. Subscribes to mouse/keyboard DOM
@@ -18,20 +20,45 @@ export class DomInputManager implements InputPort {
     private readonly keysDown = new Set<string>();
     /** Keydown edges (not auto-repeat) awaiting consumeKeyPresses(). */
     private pendingPresses: string[] = [];
+    /** Mouse button edges awaiting consumePointerTransitions(). */
+    private pendingTransitions: PointerTransition[] = [];
+    private downX = 0;
+    private downY = 0;
+    private dragged = false;
+
+    private readonly insideStage = (x: number, y: number): boolean =>
+        Math.abs(x) <= STAGE_WIDTH / 2 && Math.abs(y) <= STAGE_HEIGHT / 2;
+
+    private readonly pointAt = (event: MouseEvent): {x: number; y: number} =>
+        clientToScratch(event.clientX, event.clientY, this.canvas.getBoundingClientRect());
 
     private readonly onMouseMove = (event: MouseEvent): void => {
-        const rect = this.canvas.getBoundingClientRect();
-        const point = clientToScratch(event.clientX, event.clientY, rect);
+        const point = this.pointAt(event);
         this.mouseX = point.x;
         this.mouseY = point.y;
+        if (this.mouseDown && (Math.abs(point.x - this.downX) > DRAG_THRESHOLD ||
+            Math.abs(point.y - this.downY) > DRAG_THRESHOLD)) {
+            this.dragged = true;
+        }
     };
 
-    private readonly onMouseDown = (): void => {
+    private readonly onMouseDown = (event: MouseEvent): void => {
         this.mouseDown = true;
+        const point = this.pointAt(event);
+        this.downX = point.x;
+        this.downY = point.y;
+        this.dragged = false;
+        this.pendingTransitions.push({
+            kind: 'down', x: point.x, y: point.y, wasDragged: false, insideStage: this.insideStage(point.x, point.y)
+        });
     };
 
-    private readonly onMouseUp = (): void => {
+    private readonly onMouseUp = (event: MouseEvent): void => {
         this.mouseDown = false;
+        const point = this.pointAt(event);
+        this.pendingTransitions.push({
+            kind: 'up', x: point.x, y: point.y, wasDragged: this.dragged, insideStage: this.insideStage(point.x, point.y)
+        });
     };
 
     private readonly onKeyDown = (event: KeyboardEvent): void => {
@@ -77,6 +104,13 @@ export class DomInputManager implements InputPort {
         if (this.pendingPresses.length === 0) return [];
         const drained = this.pendingPresses;
         this.pendingPresses = [];
+        return drained;
+    }
+
+    consumePointerTransitions(): PointerTransition[] {
+        if (this.pendingTransitions.length === 0) return [];
+        const drained = this.pendingTransitions;
+        this.pendingTransitions = [];
         return drained;
     }
 

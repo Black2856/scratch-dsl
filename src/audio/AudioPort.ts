@@ -8,6 +8,10 @@ export interface AudioPort<TDecoded = unknown, TPlayback = unknown> {
     play(decoded: TDecoded, onEnded: () => void): TPlayback;
     stop(playback: TPlayback): void;
     setVolume(playback: TPlayback, volume: number): void;
+    /** Sets playback pitch in Scratch units (playbackRate = 2 ** (pitch/120)). Optional. */
+    setPitch?(playback: TPlayback, pitch: number): void;
+    /** Sets stereo pan (-100 left .. 100 right). Optional. */
+    setPan?(playback: TPlayback, pan: number): void;
 }
 
 export interface RuntimeSoundPlayback {

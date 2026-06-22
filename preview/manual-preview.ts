@@ -10,12 +10,15 @@ import {
     type ProjectDiagnostic
 } from '../src/diagnostics/ProjectDiagnostic.ts';
 import {DomInputManager} from '../src/input/DomInputManager.ts';
+import {clientToScratch} from '../src/render/coordinates.ts';
+import type {QuestionUiPort} from '../src/runtime/QuestionManager.ts';
+import type {Sprite} from '../src/model/Sprite.ts';
 import {createProject} from '../src/model/ProjectFactory.ts';
 import type {Project} from '../src/model/Project.ts';
 import {CanvasRenderer} from '../src/render/CanvasRenderer.ts';
 import {
     BrowserImageDecoder,
-    loadCurrentCostumeSkins
+    loadAllCostumeSkins
 } from '../src/render/CostumeSkinLoader.ts';
 import {Runtime} from '../src/runtime/Runtime.ts';
 import {
@@ -82,6 +85,14 @@ class TrackingAudioPort implements AudioPort<AudioBuffer, WebAudioPlayback> {
     setVolume(playback: WebAudioPlayback, volume: number): void {
         this.port.setVolume(playback, volume);
     }
+
+    setPitch(playback: WebAudioPlayback, pitch: number): void {
+        this.port.setPitch(playback, pitch);
+    }
+
+    setPan(playback: WebAudioPlayback, pan: number): void {
+        this.port.setPan(playback, pan);
+    }
 }
 
 const required = <T extends HTMLElement>(id: string): T => {
@@ -104,6 +115,62 @@ const activeSounds = required<HTMLElement>('active-sounds');
 const frameCount = required<HTMLElement>('frame-count');
 const diagnosticsElement = required<HTMLElement>('diagnostics');
 const canvas = required<HTMLCanvasElement>('stage');
+const askBar = required<HTMLElement>('ask-bar');
+const askText = required<HTMLElement>('ask-text');
+const askInput = required<HTMLInputElement>('ask-input');
+const askSubmit = required<HTMLButtonElement>('ask-submit');
+
+// Question UI for `ask and wait`: shows the input bar and submits the answer.
+const questionUi: QuestionUiPort = {
+    showQuestion(text: string): void {
+        askText.textContent = text || '答えを入力:';
+        askBar.style.display = 'flex';
+        askInput.value = '';
+        askInput.focus();
+    },
+    clearQuestion(): void {
+        askBar.style.display = 'none';
+    }
+};
+const submitAnswer = (): void => {
+    if (askBar.style.display === 'none') return;
+    runtime?.submitAnswer(askInput.value);
+    askBar.style.display = 'none';
+    canvas.focus();
+};
+askSubmit.addEventListener('click', submitAnswer);
+askInput.addEventListener('keydown', event => {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        submitAnswer();
+    }
+});
+
+// Sprite dragging for `set drag mode draggable`: pick a draggable target on
+// mouse-down and move it with the pointer until release.
+let dragTarget: Sprite | null = null;
+let dragDX = 0;
+let dragDY = 0;
+canvas.addEventListener('mousedown', event => {
+    if (!renderer || !project || status !== 'running') return;
+    const point = clientToScratch(event.clientX, event.clientY, canvas.getBoundingClientRect());
+    const hitId = renderer.pickTarget?.(point.x, point.y) ?? null;
+    if (!hitId) return;
+    const sprite = [...project.sprites, ...(runtime?.clones ?? [])].find(s => s.id === hitId);
+    if (sprite && sprite.draggable) {
+        dragTarget = sprite;
+        dragDX = sprite.x - point.x;
+        dragDY = sprite.y - point.y;
+    }
+});
+canvas.addEventListener('mousemove', event => {
+    if (!dragTarget) return;
+    const point = clientToScratch(event.clientX, event.clientY, canvas.getBoundingClientRect());
+    dragTarget.setPosition(point.x + dragDX, point.y + dragDY);
+});
+window.addEventListener('mouseup', () => {
+    dragTarget = null;
+});
 
 let dsl: DslProject | null = null;
 let project: Project | null = null;
@@ -256,7 +323,8 @@ const start = async (): Promise<void> => {
         runtime = new Runtime({
             renderer,
             input: input ?? undefined,
-            audio: soundManager!
+            audio: soundManager!,
+            questionUi
         });
         runtime.load(project);
         runtime.start();
@@ -319,8 +387,8 @@ const load = async (): Promise<void> => {
         renderer = new CanvasRenderer(canvas);
         input = new DomInputManager(canvas, window);
         project = createProject(dsl);
-        await loadCurrentCostumeSkins(project, assets, renderer);
-        runtime = new Runtime({renderer, input});
+        await loadAllCostumeSkins(project, assets, renderer);
+        runtime = new Runtime({renderer, input, questionUi});
         runtime.load(project);
         runtime.start();
         runtime.tick();

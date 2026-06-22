@@ -7,8 +7,15 @@
  * image sources directly, per Phase 3 scope.
  */
 export interface Skin {
+    /** Rotation center in *logical* (stage) units, i.e. native px / bitmapResolution. */
     readonly rotationCenterX: number;
     readonly rotationCenterY: number;
+    /**
+     * Logical units per native image pixel (= 1 / bitmapResolution). A 960×720
+     * costume at bitmapResolution 2 has scale 0.5 and renders 480×360. Defaults
+     * to 1 (native == logical) when omitted.
+     */
+    readonly scale?: number;
 
     /** Returns the current drawable image source, or null if not yet ready. */
     getImage(): CanvasImageSource | null;

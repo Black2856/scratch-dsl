@@ -420,21 +420,26 @@ export class Runtime {
         ];
 
         for (const sprite of [...this.project.sprites, ...this.clones]) {
-            states.push({
-                targetId: sprite.id,
-                isStage: false,
-                x: sprite.x,
-                y: sprite.y,
-                size: sprite.size,
-                direction: sprite.direction,
-                visible: sprite.visible,
-                rotationStyle: sprite.rotationStyle,
-                layerOrder: sprite.layerOrder,
-                costumeIndex: sprite.currentCostume,
-                effects: {...sprite.effects}
-            });
+            states.push(this.spriteDrawableState(sprite));
         }
 
         return states;
+    }
+
+    /** Current render snapshot for one sprite (used for live pen stamping). */
+    spriteDrawableState(sprite: Sprite): DrawableState {
+        return {
+            targetId: sprite.id,
+            isStage: false,
+            x: sprite.x,
+            y: sprite.y,
+            size: sprite.size,
+            direction: sprite.direction,
+            visible: sprite.visible,
+            rotationStyle: sprite.rotationStyle,
+            layerOrder: sprite.layerOrder,
+            costumeIndex: sprite.currentCostume,
+            effects: {...sprite.effects}
+        };
     }
 }

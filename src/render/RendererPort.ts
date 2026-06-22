@@ -101,8 +101,12 @@ export interface RendererPort {
     penPoint?(point: PenPoint, attributes: PenAttributes): void;
     /** Draws a pen line segment between two points. */
     penLine?(from: PenPoint, to: PenPoint, attributes: PenAttributes): void;
-    /** Stamps the target's current drawable onto the pen layer. */
-    penStamp?(targetId: string): void;
+    /**
+     * Stamps the target's drawable onto the pen layer. `state` carries the
+     * sprite's current placement so the stamp lands at the live position (not
+     * the last rendered frame); without it the renderer falls back to that frame.
+     */
+    penStamp?(targetId: string, state?: DrawableState): void;
     /** Reuses a source target's current Skin for a newly-created clone. */
     cloneTargetSkin?(sourceTargetId: string, cloneTargetId: string): void;
     /** Releases any renderer state cached for a target (e.g. a deleted clone). */

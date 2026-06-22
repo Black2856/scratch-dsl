@@ -14,6 +14,8 @@ export class SoundPlayer<TDecoded = unknown, TPlayback = unknown> {
     private finishPlayback: (() => void) | null = null;
     private playbackGeneration = 0;
     private volume = 100;
+    private pitch = 0;
+    private pan = 0;
 
     constructor(audio: AudioPort<TDecoded, TPlayback>, decoded: TDecoded) {
         this.audio = audio;
@@ -49,6 +51,8 @@ export class SoundPlayer<TDecoded = unknown, TPlayback = unknown> {
             });
             this.playback = playback;
             this.audio.setVolume(playback, this.volume);
+            this.audio.setPitch?.(playback, this.pitch);
+            this.audio.setPan?.(playback, this.pan);
             if (endedBeforePlayReturned) {
                 this.handleEnded(generation);
             }
@@ -76,6 +80,16 @@ export class SoundPlayer<TDecoded = unknown, TPlayback = unknown> {
         this.volume = clampVolume(volume);
         if (this.playback !== null) {
             this.audio.setVolume(this.playback, this.volume);
+        }
+    }
+
+    /** Sets pitch/pan and applies them to any active playback. */
+    setEffects(pitch: number, pan: number): void {
+        this.pitch = pitch;
+        this.pan = pan;
+        if (this.playback !== null) {
+            this.audio.setPitch?.(this.playback, pitch);
+            this.audio.setPan?.(this.playback, pan);
         }
     }
 

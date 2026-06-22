@@ -3,6 +3,7 @@ import type {AudioPort} from './AudioPort.ts';
 export interface WebAudioPlayback {
     readonly source: AudioBufferSourceNode;
     readonly gain: GainNode;
+    readonly panner: StereoPannerNode;
     stopped: boolean;
 }
 
@@ -31,13 +32,17 @@ export class WebAudioPort implements AudioPort<AudioBuffer, WebAudioPlayback> {
     play(decoded: AudioBuffer, onEnded: () => void): WebAudioPlayback {
         const source = this.context.createBufferSource();
         const gain = this.context.createGain();
-        const playback: WebAudioPlayback = {source, gain, stopped: false};
+        const panner = this.context.createStereoPanner();
+        const playback: WebAudioPlayback = {source, gain, panner, stopped: false};
         source.buffer = decoded;
+        // source -> gain -> panner -> destination (pitch via source.playbackRate).
         source.connect(gain);
-        gain.connect(this.context.destination);
+        gain.connect(panner);
+        panner.connect(this.context.destination);
         source.onended = () => {
             source.disconnect();
             gain.disconnect();
+            panner.disconnect();
             onEnded();
         };
         source.start();
@@ -53,5 +58,16 @@ export class WebAudioPort implements AudioPort<AudioBuffer, WebAudioPlayback> {
     setVolume(playback: WebAudioPlayback, volume: number): void {
         const normalized = Math.min(100, Math.max(0, volume)) / 100;
         playback.gain.gain.setValueAtTime(normalized, this.context.currentTime);
+    }
+
+    setPitch(playback: WebAudioPlayback, pitch: number): void {
+        // Scratch pitch effect: 120 units = one octave. Clamp to ±360 (±3 oct).
+        const clamped = Math.min(360, Math.max(-360, pitch));
+        playback.source.playbackRate.setValueAtTime(2 ** (clamped / 120), this.context.currentTime);
+    }
+
+    setPan(playback: WebAudioPlayback, pan: number): void {
+        const normalized = Math.min(100, Math.max(-100, pan)) / 100;
+        playback.panner.pan.setValueAtTime(normalized, this.context.currentTime);
     }
 }
