@@ -23,6 +23,12 @@ export interface RuntimeSoundPlayback {
 export interface RuntimeAudioPort {
     play(targetId: string, soundId: string): RuntimeSoundPlayback | undefined;
     setTargetVolume(targetId: string, volume: number): void;
+    /**
+     * Applies the target's sound effects (pitch in semitone-cents -360..360,
+     * pan -100..100) to its active and future playback. Optional: a headless
+     * audio port may ignore it.
+     */
+    setTargetEffects?(targetId: string, effects: {pitch: number; pan: number}): void;
     stopTarget(targetId: string): void;
     stopAll(): void;
     /**

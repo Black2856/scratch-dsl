@@ -1,8 +1,17 @@
 # Optional機能設計ドラフト
 
+## Phase 7.2への昇格
+
+本書でPhase 9候補としていたpitch/pan、alpha collision、color touchingは、
+`manual-verification`のunsupported解消要件によりPhase 7.2へ昇格した。
+実装設計の正本は[`../phase7.2/README.md`](../phase7.2/README.md)以下とする。
+
+本書はPhase 7.2完了後の精度・性能改善と、Phase 8/9候補の履歴資料として維持する。
+
 ## 評価基準
 
-各候補を、必要性、難度、影響範囲、互換性上の効果、テスト可能性で評価する。Phase 9候補であり、現時点では実装しない。
+各候補を、必要性、難度、影響範囲、互換性上の効果、テスト可能性で評価する。
+Phase 7.2へ昇格した項目以外はPhase 9候補であり、現時点では実装しない。
 
 ## 比較表
 
@@ -20,19 +29,19 @@
 
 必要性は比較的高く、simple soundの次の自然な拡張である。Runtimeにはtarget単位effect state、再生中SoundPlayerへの反映、clone時の状態方針が必要になる。Rendererへの影響はない。SB3では対応blockと値の保持、import時のopcode/mutation確認が必要。
 
-現時点で行わない理由は、Phase 7の目的が生成運用と実エディタ検証であり、音声effectの実装・聴感差テストを混在させないためである。
+Phase 7.2 Wave Dで実装する。Phase 9では聴感差、performance、追加audio edge caseを扱う。
 
 ## alpha collision
 
 bounding boxよりScratchに近いtouching判定を可能にする。Rendererまたは専用collision portに、transform後のalpha mask、候補絞込、pixel queryが必要になる。Runtimeのsensing primitiveとheadless test用fakeも必要。
 
-Canvas 2Dと公式WebGL rendererの差が大きく、rotation center、scale、ghost、非表示の扱いを実測する必要があるため延期する。
+Phase 7.2 Wave Cで実装する。Phase 9では大規模作品でのperformanceと精度改善を扱う。
 
 ## color touching
 
 Stage合成結果とSprite色の比較が必要で、alpha collisionより影響が広い。描画順、pen layer、effects、色空間、pixel readback performanceを扱う。headless Runtimeだけでは検証できず、browser golden testが必要になる。
 
-難度と不安定性が高く、主要生成フロー成立には必須でないためP3とする。
+Phase 7.2 Wave Dで実装する。Phase 9ではGPU化やreadback削減などの最適化を扱う。
 
 ## cloud variable指定保持
 
@@ -66,6 +75,8 @@ cloud runtime、認証、server同期は実装しない。ただしDSLとSB3で`
 - 公式またはTurboWarpとの差を実測してから仕様化する。
 - optional機能のためにPhase 7/8の情報保全を後退させない。
 
-## 今はやらない理由
+## 残る延期理由
 
-Phase 6でexport基盤が完成した直後であり、まず生成運用、fixture、実エディタ確認によって実際の不足を測る必要がある。未計測の互換機能を先行実装すると、Runtime・Renderer・SB3 importの複数境界を同時に不安定化させるため、Phase 9まで延期する。
+Phase 7.2対象外のoptional機能は、まずPhase 7.2と実エディタ確認で得た差分を測る。
+未計測の機能を先行実装してRuntime・Renderer・SB3 importの複数境界を同時に
+不安定化させない。

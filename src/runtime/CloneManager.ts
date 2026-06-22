@@ -71,6 +71,8 @@ export class CloneManager {
         this.runtime.renderer?.releaseTarget?.(clone.id);
         this.runtime.audio?.stopTarget(clone.id);
         this.runtime.pen.releaseTarget(clone.id);
+        this.runtime.bubbles.delete(clone.id);
+        this.runtime.questions.clearForTarget(clone.id);
         this.runtime.clones = this.runtime.clones.filter(existing => existing !== clone);
     }
 

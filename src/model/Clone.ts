@@ -52,6 +52,9 @@ export class Clone extends Sprite {
             draggable: source.draggable,
             rotationStyle: source.rotationStyle
         };
-        return new Clone(options, root);
+        const clone = new Clone(options, root);
+        clone.copyEffectsFrom(source);
+        clone.copySoundEffectsFrom(source);
+        return clone;
     }
 }

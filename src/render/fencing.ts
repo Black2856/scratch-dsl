@@ -117,3 +117,31 @@ export const fencePosition = (
 
     return [fx, fy];
 };
+
+/** Absolute stage-space bounds (origin centre, y-up): left ≤ right, bottom ≤ top. */
+export interface AbsoluteBounds {
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
+}
+
+/**
+ * The looser VM-side fence used by `motion_ifonedgebounce` (not the
+ * renderer-side fence above). Nudges (x, y) just enough that the drawable's
+ * absolute bounds stay within the full stage rectangle [-240,240]×[-180,180].
+ * Pure mirror of rendered-target's `keepInFence` with the default fence.
+ */
+export const keepInFence = (x: number, y: number, bounds: AbsoluteBounds): [number, number] => {
+    const fenceLeft = -STAGE_WIDTH / 2;
+    const fenceRight = STAGE_WIDTH / 2;
+    const fenceTop = STAGE_HEIGHT / 2;
+    const fenceBottom = -STAGE_HEIGHT / 2;
+    let dx = 0;
+    let dy = 0;
+    if (bounds.left < fenceLeft) dx += fenceLeft - bounds.left;
+    if (bounds.right > fenceRight) dx += fenceRight - bounds.right;
+    if (bounds.top > fenceTop) dy += fenceTop - bounds.top;
+    if (bounds.bottom < fenceBottom) dy += fenceBottom - bounds.bottom;
+    return [x + dx, y + dy];
+};

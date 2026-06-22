@@ -14,6 +14,19 @@ export interface FieldMetadata {
     reference?: FieldReference;
 }
 
+/**
+ * Hat scheduling policy, taken from the official VM's `getHats()` plus the
+ * engine's edge-activated handling. `restartExistingThreads` controls whether
+ * starting the hat restarts a thread already running for the same
+ * target/topBlock; `edgeActivated` marks predicate hats (e.g.
+ * `event_whengreaterthan`) that the Runtime evaluates every tick and fires only
+ * on a false→true transition.
+ */
+export interface HatPolicy {
+    restartExistingThreads: boolean;
+    edgeActivated?: boolean;
+}
+
 export interface OpcodeMetadata {
     opcode: string;
     shape: BlockShape;
@@ -22,6 +35,7 @@ export interface OpcodeMetadata {
     inputs: Readonly<Record<string, InputMetadata>>;
     fields: Readonly<Record<string, FieldMetadata>>;
     allowNext: boolean;
+    hat?: HatPolicy;
 }
 
 const define = (
@@ -30,7 +44,8 @@ const define = (
     priority: Priority,
     inputs: Record<string, InputMetadata> = {},
     fields: Record<string, FieldMetadata> = {},
-    target: TargetConstraint = 'any'
+    target: TargetConstraint = 'any',
+    hat?: HatPolicy
 ): OpcodeMetadata => ({
     opcode,
     shape,
@@ -38,7 +53,8 @@ const define = (
     priority,
     inputs,
     fields,
-    allowNext: shape === 'stack' || shape === 'hat'
+    allowNext: shape === 'stack' || shape === 'hat',
+    hat
 });
 
 const VALUE = (shadow?: string): InputMetadata => ({required: true, kind: 'value', shadow});
@@ -87,6 +103,16 @@ const entries: OpcodeMetadata[] = [
     define('sound_changevolumeby', 'stack', 'P0', {VOLUME: VALUE('math_number')}),
     define('sound_setvolumeto', 'stack', 'P0', {VOLUME: VALUE('math_number')}),
     define('sound_volume', 'reporter', 'P0'),
+    // Phase 7.2 Wave D: sound pitch/pan effects
+    define('sound_changeeffectby', 'stack', 'P2', {
+        EFFECT: VALUE('sound_effects_menu'),
+        VALUE: VALUE('math_number')
+    }),
+    define('sound_seteffectto', 'stack', 'P2', {
+        EFFECT: VALUE('sound_effects_menu'),
+        VALUE: VALUE('math_number')
+    }),
+    define('sound_cleareffects', 'stack', 'P2'),
 
     define('control_wait', 'stack', 'P0', {DURATION: VALUE('math_positive_number')}),
     define('control_repeat', 'stack', 'P0', {TIMES: VALUE('math_whole_number'), SUBSTACK}),
@@ -120,6 +146,15 @@ const entries: OpcodeMetadata[] = [
     define('pen_setPenColorToColor', 'stack', 'P1', {COLOR: VALUE('colour_picker')}),
     define('pen_changePenSizeBy', 'stack', 'P1', {SIZE: VALUE('math_number')}),
     define('pen_setPenSizeTo', 'stack', 'P1', {SIZE: VALUE('math_number')}),
+    // Phase 7.2 Wave D: pen colour params (HSV)
+    define('pen_changePenColorParamBy', 'stack', 'P2', {
+        COLOR_PARAM: VALUE('pen_menu_colorParam'),
+        VALUE: VALUE('math_number')
+    }, {}, 'sprite'),
+    define('pen_setPenColorParamTo', 'stack', 'P2', {
+        COLOR_PARAM: VALUE('pen_menu_colorParam'),
+        VALUE: VALUE('math_number')
+    }, {}, 'sprite'),
 
     // --- P1: variable/list monitors ----------------------------------------
     define('data_showvariable', 'stack', 'P1', {}, {VARIABLE: FIELD('variable')}),
@@ -177,6 +212,94 @@ const entries: OpcodeMetadata[] = [
     define('data_lengthoflist', 'reporter', 'P0', {}, {LIST: FIELD('list')}),
     define('data_listcontainsitem', 'boolean', 'P0', {ITEM: VALUE('text')}, {LIST: FIELD('list')}),
 
+    // --- Phase 7.2 Wave A: DOM-independent opcodes -------------------------
+    define('operator_mod', 'reporter', 'P2', {NUM1: VALUE('math_number'), NUM2: VALUE('math_number')}),
+    define('operator_round', 'reporter', 'P2', {NUM: VALUE('math_number')}),
+    define('operator_mathop', 'reporter', 'P2', {NUM: VALUE('math_number')}, {OPERATOR: FIELD()}),
+
+    define('control_wait_until', 'stack', 'P2', {CONDITION: BOOLEAN}),
+    define('control_repeat_until', 'stack', 'P2', {CONDITION: BOOLEAN, SUBSTACK}),
+    define('control_while', 'stack', 'P2', {CONDITION: BOOLEAN, SUBSTACK}),
+
+    define('looks_costumenumbername', 'reporter', 'P2', {}, {NUMBER_NAME: FIELD()}, 'sprite'),
+    define('looks_backdropnumbername', 'reporter', 'P2', {}, {NUMBER_NAME: FIELD()}),
+    define('looks_size', 'reporter', 'P2', {}, {}, 'sprite'),
+
+    define('sensing_timer', 'reporter', 'P2'),
+    define('sensing_resettimer', 'stack', 'P2'),
+    define('sensing_current', 'reporter', 'P2', {}, {CURRENTMENU: FIELD()}),
+    define('sensing_dayssince2000', 'reporter', 'P2'),
+    define('sensing_online', 'boolean', 'P2'),
+    define('sensing_username', 'reporter', 'P2'),
+    define('sensing_of', 'reporter', 'P2', {
+        OBJECT: VALUE('sensing_of_object_menu')
+    }, {PROPERTY: FIELD()}),
+    define('sensing_distanceto', 'reporter', 'P2', {
+        DISTANCETOMENU: VALUE('sensing_distancetomenu')
+    }, {}, 'sprite'),
+    define('sensing_setdragmode', 'stack', 'P2', {}, {DRAG_MODE: FIELD()}, 'sprite'),
+
+    // --- Phase 7.2 Wave B: motion target/glide/bounce ----------------------
+    define('motion_goto', 'stack', 'P2', {TO: VALUE('motion_goto_menu')}, {}, 'sprite'),
+    define('motion_glideto', 'stack', 'P2', {
+        SECS: VALUE('math_number'),
+        TO: VALUE('motion_glideto_menu')
+    }, {}, 'sprite'),
+    define('motion_glidesecstoxy', 'stack', 'P2', {
+        SECS: VALUE('math_number'),
+        X: VALUE('math_number'),
+        Y: VALUE('math_number')
+    }, {}, 'sprite'),
+    define('motion_pointtowards', 'stack', 'P2', {TOWARDS: VALUE('motion_pointtowards_menu')}, {}, 'sprite'),
+    define('motion_ifonedgebounce', 'stack', 'P2', {}, {}, 'sprite'),
+
+    // --- Phase 7.2 Wave C: say/think bubbles, ask/answer -------------------
+    define('looks_say', 'stack', 'P2', {MESSAGE: VALUE('text')}, {}, 'sprite'),
+    define('looks_sayforsecs', 'stack', 'P2', {
+        MESSAGE: VALUE('text'),
+        SECS: VALUE('math_number')
+    }, {}, 'sprite'),
+    define('looks_think', 'stack', 'P2', {MESSAGE: VALUE('text')}, {}, 'sprite'),
+    define('looks_thinkforsecs', 'stack', 'P2', {
+        MESSAGE: VALUE('text'),
+        SECS: VALUE('math_number')
+    }, {}, 'sprite'),
+    define('sensing_askandwait', 'stack', 'P2', {QUESTION: VALUE('text')}),
+    define('sensing_answer', 'reporter', 'P2'),
+
+    // graphic effects: EFFECT is an inline field (no menu shadow), per official sb3.
+    define('looks_changeeffectby', 'stack', 'P2', {CHANGE: VALUE('math_number')}, {EFFECT: FIELD()}, 'sprite'),
+    define('looks_seteffectto', 'stack', 'P2', {VALUE: VALUE('math_number')}, {EFFECT: FIELD()}, 'sprite'),
+    define('looks_cleargraphiceffects', 'stack', 'P2', {}, {}, 'sprite'),
+
+    // object touching: TOUCHINGOBJECTMENU menu shadow.
+    define('sensing_touchingobject', 'boolean', 'P2', {
+        TOUCHINGOBJECTMENU: VALUE('sensing_touchingobjectmenu')
+    }, {}, 'sprite'),
+
+    // Phase 7.2 Wave D: loudness + colour touching
+    define('sensing_loudness', 'reporter', 'P2'),
+    define('sensing_touchingcolor', 'boolean', 'P2', {COLOR: VALUE('colour_picker')}, {}, 'sprite'),
+    define('sensing_coloristouchingcolor', 'boolean', 'P2', {
+        COLOR: VALUE('colour_picker'),
+        COLOR2: VALUE('colour_picker')
+    }, {}, 'sprite'),
+
+    // --- Phase 7.2 Wave B: backdrop ----------------------------------------
+    define('looks_switchbackdropto', 'stack', 'P2', {BACKDROP: VALUE('looks_backdrops')}),
+    define('looks_switchbackdroptoandwait', 'stack', 'P2', {BACKDROP: VALUE('looks_backdrops')}),
+    define('looks_nextbackdrop', 'stack', 'P2'),
+
+    // --- Phase 7.2 Wave B: click / backdrop / edge hats --------------------
+    define('event_whenthisspriteclicked', 'hat', 'P2', {}, {}, 'sprite',
+        {restartExistingThreads: true}),
+    define('event_whenstageclicked', 'hat', 'P2', {}, {}, 'stage',
+        {restartExistingThreads: true}),
+    define('event_whenbackdropswitchesto', 'hat', 'P2', {}, {BACKDROP: FIELD()}, 'any',
+        {restartExistingThreads: true}),
+    define('event_whengreaterthan', 'hat', 'P2', {VALUE: VALUE('math_number')},
+        {WHENGREATERTHANMENU: FIELD()}, 'any', {restartExistingThreads: false, edgeActivated: true}),
+
     define('math_number', 'shadow', 'P0', {}, {NUM: FIELD()}),
     define('math_positive_number', 'shadow', 'P0', {}, {NUM: FIELD()}),
     define('math_whole_number', 'shadow', 'P0', {}, {NUM: FIELD()}),
@@ -186,12 +309,27 @@ const entries: OpcodeMetadata[] = [
     define('event_broadcast_menu', 'shadow', 'P0', {}, {BROADCAST_OPTION: FIELD('broadcast')}),
     define('looks_costume', 'shadow', 'P0', {}, {COSTUME: FIELD()}),
     define('sound_sounds_menu', 'shadow', 'P0', {}, {SOUND_MENU: FIELD()}),
+    define('sound_effects_menu', 'shadow', 'P2', {}, {EFFECT: FIELD()}),
     define('sensing_keyoptions', 'shadow', 'P0', {}, {KEY_OPTION: FIELD()}),
+
+    // Phase 7.2 Wave A menus
+    define('sensing_of_object_menu', 'shadow', 'P2', {}, {OBJECT: FIELD()}),
+    define('sensing_distancetomenu', 'shadow', 'P2', {}, {DISTANCETOMENU: FIELD()}),
+
+    // Phase 7.2 Wave B menus
+    define('motion_goto_menu', 'shadow', 'P2', {}, {TO: FIELD()}),
+    define('motion_glideto_menu', 'shadow', 'P2', {}, {TO: FIELD()}),
+    define('motion_pointtowards_menu', 'shadow', 'P2', {}, {TOWARDS: FIELD()}),
+    define('looks_backdrops', 'shadow', 'P2', {}, {BACKDROP: FIELD()}),
+
+    // Phase 7.2 Wave C menu
+    define('sensing_touchingobjectmenu', 'shadow', 'P2', {}, {TOUCHINGOBJECTMENU: FIELD()}),
 
     // P1 shadows / menus
     define('control_create_clone_of_menu', 'shadow', 'P1', {}, {CLONE_OPTION: FIELD()}),
     define('procedures_prototype', 'shadow', 'P1'),
-    define('colour_picker', 'shadow', 'P1', {}, {COLOUR: FIELD()})
+    define('colour_picker', 'shadow', 'P1', {}, {COLOUR: FIELD()}),
+    define('pen_menu_colorParam', 'shadow', 'P2', {}, {colorParam: FIELD()})
 ];
 
 export const OPCODE_METADATA: Readonly<Record<string, OpcodeMetadata>> =

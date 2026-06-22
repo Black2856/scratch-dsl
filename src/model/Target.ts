@@ -3,6 +3,35 @@ import {BlockContainer} from './BlockContainer.ts';
 import {VariableStore} from './VariableStore.ts';
 import {ListStore} from './ListStore.ts';
 
+/** The seven Scratch graphic effects, all defaulting to 0 (no effect). */
+export interface GraphicEffects {
+    color: number;
+    fisheye: number;
+    whirl: number;
+    pixelate: number;
+    mosaic: number;
+    brightness: number;
+    ghost: number;
+}
+
+export const GRAPHIC_EFFECT_NAMES: ReadonlyArray<keyof GraphicEffects> =
+    ['color', 'fisheye', 'whirl', 'pixelate', 'mosaic', 'brightness', 'ghost'];
+
+const zeroEffects = (): GraphicEffects => ({
+    color: 0, fisheye: 0, whirl: 0, pixelate: 0, mosaic: 0, brightness: 0, ghost: 0
+});
+
+/** Per-target sound effects (pitch -360..360, pan -100..100), default 0. */
+export interface SoundEffects {
+    pitch: number;
+    pan: number;
+}
+
+const SOUND_EFFECT_RANGE: Record<keyof SoundEffects, {min: number; max: number}> = {
+    pitch: {min: -360, max: 360},
+    pan: {min: -100, max: 100}
+};
+
 export interface TargetOptions {
     id: string;
     name: string;
@@ -39,6 +68,10 @@ export class Target {
     readonly sounds: DslSound[];
     volume: number;
     layerOrder: number;
+    /** Live graphic effect values (per-target; clones copy then diverge). */
+    readonly effects: GraphicEffects = zeroEffects();
+    /** Live sound effect values (per-target; clones copy then diverge). */
+    readonly soundEffects: SoundEffects = {pitch: 0, pan: 0};
 
     constructor(options: TargetOptions) {
         this.id = options.id;
@@ -74,6 +107,49 @@ export class Target {
 
     setLayerOrder(order: number): void {
         this.layerOrder = order;
+    }
+
+    /** Returns the 0-based index of the costume with `name`, or -1 if none. */
+    getCostumeIndexByName(name: string): number {
+        return this.costumes.findIndex(costume => costume.name === name);
+    }
+
+    /** Sets one graphic effect to an (already-clamped) value. Ignores unknown names. */
+    setEffect(name: string, value: number): void {
+        if (Object.prototype.hasOwnProperty.call(this.effects, name)) {
+            this.effects[name as keyof GraphicEffects] = value;
+        }
+    }
+
+    /** Resets every graphic effect to 0. */
+    clearEffects(): void {
+        for (const name of GRAPHIC_EFFECT_NAMES) this.effects[name] = 0;
+    }
+
+    /** Copies another target's effect values (clone creation). */
+    copyEffectsFrom(other: Target): void {
+        for (const name of GRAPHIC_EFFECT_NAMES) this.effects[name] = other.effects[name];
+    }
+
+    /** Sets or changes one sound effect (pitch/pan), clamped to its range. */
+    setSoundEffect(name: string, value: number, change: boolean): void {
+        if (name !== 'pitch' && name !== 'pan') return;
+        const key = name as keyof SoundEffects;
+        const next = (change ? this.soundEffects[key] : 0) + value;
+        const {min, max} = SOUND_EFFECT_RANGE[key];
+        this.soundEffects[key] = Math.min(max, Math.max(min, next));
+    }
+
+    /** Resets pitch and pan to 0. */
+    clearSoundEffects(): void {
+        this.soundEffects.pitch = 0;
+        this.soundEffects.pan = 0;
+    }
+
+    /** Copies another target's sound effects (clone creation). */
+    copySoundEffectsFrom(other: Target): void {
+        this.soundEffects.pitch = other.soundEffects.pitch;
+        this.soundEffects.pan = other.soundEffects.pan;
     }
 
     private static clampVolume(value: number): number {

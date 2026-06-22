@@ -1,4 +1,12 @@
-import type {DrawableState, MonitorView, PenAttributes, PenPoint, RendererPort} from './RendererPort.ts';
+import type {
+    Bounds,
+    DrawableState,
+    DrawableTransform,
+    MonitorView,
+    PenAttributes,
+    PenPoint,
+    RendererPort
+} from './RendererPort.ts';
 import {Drawable} from './Drawable.ts';
 import type {Skin} from './Skin.ts';
 import {STAGE_WIDTH, STAGE_HEIGHT, scratchToCanvas, directionToRadians} from './coordinates.ts';
@@ -236,6 +244,56 @@ export class CanvasRenderer implements RendererPort {
             transform.rotationStyle
         );
         return fencePosition(x, y, bounds);
+    }
+
+    /**
+     * Absolute stage-space bounds of the target's transformed costume under the
+     * given current placement, or null with no decoded skin (so edge bounce
+     * no-ops). Mirrors the fast (rectangle) AABB used by fencing.
+     */
+    getBounds(targetId: string, transform: DrawableTransform): Bounds | null {
+        const skin = this.skins.get(targetId);
+        const image = skin?.getImage() ?? null;
+        if (!skin || !image) return null;
+        const dims = intrinsicSize(image);
+        if (!dims) return null;
+        const local = computeLocalBounds(
+            dims.width,
+            dims.height,
+            skin.rotationCenterX,
+            skin.rotationCenterY,
+            transform.size,
+            transform.direction,
+            transform.rotationStyle
+        );
+        return {
+            left: transform.x + local.left,
+            right: transform.x + local.right,
+            top: transform.y + local.top,
+            bottom: transform.y + local.bottom
+        };
+    }
+
+    /**
+     * Front-most visible non-stage target whose transformed bounds contain the
+     * stage point (x, y), tested against the last rendered scene. Uses the
+     * fast AABB (no per-pixel silhouette); good enough for click hats.
+     */
+    pickTarget(x: number, y: number): string | null {
+        for (let i = this.lastDrawOrder.length - 1; i >= 0; i--) {
+            const id = this.lastDrawOrder[i];
+            const state = this.lastStates.get(id);
+            if (!state || state.isStage || !state.visible) continue;
+            const bounds = this.getBounds(id, {
+                x: state.x, y: state.y, size: state.size,
+                direction: state.direction, rotationStyle: state.rotationStyle
+            });
+            if (!bounds) continue;
+            if (x >= bounds.left && x <= bounds.right && y >= bounds.bottom && y <= bounds.top) {
+                return id;
+            }
+        }
+        return null;
     }
 
     /** Introspection: target IDs in the order they were actually painted in the last renderDrawables() call (visible-only). */

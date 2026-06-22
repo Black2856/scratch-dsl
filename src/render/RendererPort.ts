@@ -15,6 +15,8 @@ export interface DrawableState {
     rotationStyle: 'all around' | 'left-right' | "don't rotate";
     layerOrder: number;
     costumeIndex: number;
+    /** Graphic effect values (color, fisheye, whirl, pixelate, mosaic, brightness, ghost). */
+    effects?: Readonly<Record<string, number>>;
 }
 
 /**
@@ -30,10 +32,38 @@ export interface MonitorView {
     y: number;
 }
 
+/** A say/think bubble to paint, anchored to its target's current placement. */
+export interface BubbleView {
+    targetId: string;
+    type: 'say' | 'think';
+    text: string;
+}
+
 /** A point in Scratch stage coordinates (origin centre, y-up). */
 export interface PenPoint {
     x: number;
     y: number;
+}
+
+/**
+ * Absolute axis-aligned bounds of a drawable in Scratch stage coordinates
+ * (origin centre, y-up): left ≤ right and bottom ≤ top. Used by edge bounce
+ * and (later) collision candidate culling.
+ */
+export interface Bounds {
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
+}
+
+/** Dynamic placement passed to bounds/fence queries (current, not last-frame). */
+export interface DrawableTransform {
+    x: number;
+    y: number;
+    size: number;
+    direction: number;
+    rotationStyle: 'all around' | 'left-right' | "don't rotate";
 }
 
 /** Pen stroke attributes: a CSS colour string and a line diameter in px. */
@@ -60,6 +90,11 @@ export interface RendererPort {
      * support) skips the readout overlay.
      */
     renderMonitors?(monitors: MonitorView[]): void;
+    /**
+     * Paints active say/think bubbles for the current frame. Optional: a
+     * headless Runtime (or a renderer without bubble support) skips them.
+     */
+    renderBubbles?(bubbles: BubbleView[]): void;
     /** Clears the entire pen layer. */
     penClear?(): void;
     /** Draws a filled pen dot at `point`. */
@@ -86,4 +121,34 @@ export interface RendererPort {
         y: number,
         transform: {size: number; direction: number; rotationStyle: 'all around' | 'left-right' | "don't rotate"}
     ): [number, number];
+    /**
+     * Absolute stage-space bounds for the target's drawable under the given
+     * (current) transform, or null when no skin/bounds are available. Used by
+     * `motion_ifonedgebounce`; with no renderer the bounce is a no-op, matching
+     * the official VM's `if (!bounds) return`.
+     */
+    getBounds?(targetId: string, transform: DrawableTransform): Bounds | null;
+    /**
+     * Returns the id of the front-most visible target whose drawable contains
+     * the stage point (x, y), or null if none. Used for click hats; resolves
+     * against the most recently rendered scene (what the user clicked on).
+     */
+    pickTarget?(x: number, y: number): string | null;
+    /** True when the target's drawable covers the stage point (alpha-aware). */
+    isTouchingPoint?(targetId: string, x: number, y: number): boolean;
+    /** True when the target's drawable reaches outside the stage rectangle. */
+    isTouchingEdge?(targetId: string): boolean;
+    /** True when the target's drawable overlaps any of the candidate drawables. */
+    isTouchingTargets?(targetId: string, candidateIds: string[]): boolean;
+    /** True when the target's drawable touches `color` ([r,g,b]) in the composited scene. */
+    isTouchingColor?(targetId: string, color: readonly [number, number, number]): boolean;
+    /**
+     * True when the `mask`-coloured part of the target's own drawable touches
+     * `color` in the rest of the composited scene (color is touching color).
+     */
+    isColorTouchingColor?(
+        targetId: string,
+        color: readonly [number, number, number],
+        mask: readonly [number, number, number]
+    ): boolean;
 }
