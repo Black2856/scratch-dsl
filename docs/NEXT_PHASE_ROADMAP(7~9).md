@@ -43,7 +43,7 @@ AssetManager、SoundManager、serializer、preview、CLIは本体側へ置く。
 
 ```text
 workspace/<name>/project.ts
-  ├─ validate → manual preview → Runtime/Canvas/Web Audio
+  ├─ validate → manual preview → Runtime/Web Audio（視覚出力は実Scratch VM）
   └─ validate → serializer/packager → output/<name>.sb3 → scratch-parser
 ```
 

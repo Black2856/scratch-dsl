@@ -81,7 +81,7 @@ targetごとに次を保持:
 `setTimeout`をRuntimeへ持ち込まない。同じtargetのbubbleが後続blockで更新された場合、
 古いdeadlineは新しいbubbleを消さない。
 
-RendererPortには`renderBubbles(BubbleView[])`を追加する。CanvasRendererはSpriteの
+RendererPortには`renderBubbles(BubbleView[])`を追加する。renderer実装はSpriteの
 transformed boundsから左右配置し、stage外へはみ出さないようclampする。
 
 ### QuestionManager
@@ -227,8 +227,7 @@ effects stateは全7種を保持する。実装順:
 2. `pixelate`, `mosaic`。
 3. `fisheye`, `whirl`。
 
-Canvas 2Dの`filter`だけでScratch互換を主張しない。offscreen bitmap処理または
-scratch-render shader式をCPUへ移植し、effectごとのgolden testを用意する。
+effectはscratch-renderのshader式を正本とする。effect stateをRuntimeが保持し、視覚出力は実Scratch VM経由で確認する。effectごとのgolden testを用意する。
 v2の最低ゲートは`color`のchange/set/clearだが、未実装effect選択時はno-opにせず
 diagnosticまたはwave未完了として扱う。
 

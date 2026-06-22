@@ -9,7 +9,7 @@
 | 0 | 壊れない互換DSL基盤 | schema・ID・Cast・metadata・validatorの全test通過 |
 | 1 | Project/Stage/Sprite/Target/BlockContainer/Stores | scope・保存test |
 | 2 | Runtime/Scheduler/Thread/BlockRunner | headless block test |
-| 3 | Canvas 2D、costume、layers、keyboard/mouse | 座標・pointer test |
+| 3 | costume、layers、座標変換、keyboard/mouse | 座標・pointer test |
 | 4 | AssetManager、simple Web Audio | load/play/stop test |
 | 5 | clone、procedure、pen、monitor最小 | lifecycle/warp test |
 | 6 | project.json serializer、SB3 packager | 公式VM再読込test |

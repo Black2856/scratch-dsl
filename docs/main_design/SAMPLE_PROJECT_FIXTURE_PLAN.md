@@ -68,13 +68,11 @@ opcode名の最終確定は実装済みmetadataを正本とする。例えばcli
 
 clock、input、audio、renderer portを必要に応じてfake化し、green flag後のtarget state、variable/list、thread完了、clone数、port呼出しを検証する。
 
-### Renderer/E2E
+### 実VMでの目視確認
 
-座標、costume、click、keyboard、pen、clone描画、audio gestureに限定する。画像比較を導入する場合は許容差と環境を固定する。
-
-pen確認では、pen down時の円形点と`motion_movesteps`後の線分を別々に確認する。
-clone確認ではsource Spriteのskin継承を確認し、costumeなしStageやcloneに
-デバッグ用fallback四角が誤表示されないことを回帰テストへ含める。
+座標、costume、click、keyboard、pen、clone、audio gesture など視覚・音声の確認は、
+`.sb3` を実Scratch VM（`npm run preview` / `npm run shot`）で実行して行う。
+画像比較を導入する場合は許容差と環境を固定する。
 
 ### SB3 export
 

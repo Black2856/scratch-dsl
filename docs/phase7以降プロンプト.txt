@@ -12,7 +12,7 @@ Phase 0〜6で完了済みのもの
  schema  ID  Cast  opcode metadata  validator
  Project  Stage  Sprite  Target  BlockContainer  Stores
  Runtime  Scheduler  Thread  BlockRunner
- Canvas 2D Renderer  InputManager
+ InputManager *(Canvas 2D Rendererは後に削除。視覚出力は実Scratch VMへ委任)*
  AssetManager  simple Web Audio
  Clone  Procedure  Pen  Monitor 最小実装
  DSL → project.json serializer

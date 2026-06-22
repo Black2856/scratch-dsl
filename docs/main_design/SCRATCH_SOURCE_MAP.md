@@ -31,7 +31,7 @@
 3. `Blocks` はIDをキーにしたブロックグラフを保持し、`Thread` と `Sequencer` が実行する。
 4. core opcodeは `scratch3_*.js` の `getPrimitives()` が実装関数へ割り当てる。
 5. SB3 serializerはoriginal targetsのみを対象にし、block inputを圧縮表現へ変換する。
-6. RenderはWebGL実装である。本プロジェクトのCanvas 2D採用は互換インターフェースを模倣する独自判断であり、公式実装の複製ではない。
+6. RenderはWebGL実装（`scratch-render`）である。本プロジェクトは視覚出力を実Scratch VM（`npm run preview` / `npm run shot`）に委ねており、自作のCanvas描画レイヤは持たない。
 7. built-in extensionは起動時に全てロードされず、projectが使うextension IDに応じて`ExtensionManager`がロードする。
 
 ## 未確認事項

@@ -66,14 +66,14 @@
 完了ゲート:
 
 - Fake renderer/inputでRuntime test。
-- CanvasRendererのpick/bounds Playwright test。
+- RendererPortのpick/bounds Playwright test（実Scratch VM経由）。
 - backdrop SB3を公式/TurboWarpでload可能。
 
 ## Wave C: UI and visual
 
 ### C1 bubble
 
-- BubbleManager、BubbleView、CanvasRenderer bubble描画。
+- BubbleManager、BubbleView、bubble描画（視覚確認は実Scratch VM経由）。
 - say/think、秒数付き、後続bubbleによるgeneration保護。
 - hidden target、clone削除、stop all。
 
@@ -138,9 +138,8 @@
 | model | `src/model/Target.ts`, `Sprite.ts`, `Clone.ts` |
 | Runtime | `src/runtime/Runtime.ts`, `BlockRunner.ts`, `EventBus.ts`, `primitives.ts` |
 | new managers | `src/runtime/{ProjectTimer,BubbleManager,QuestionManager,TargetResolver}.ts` |
-| ports | `src/runtime/ports.ts`, `src/input/InputPort.ts`, `src/render/RendererPort.ts`, `src/audio/AudioPort.ts` |
-| renderer | `src/render/CanvasRenderer.ts`, effect/collision helper群 |
-| input/UI | `src/input/DomInputManager.ts`, `preview/*` |
+| ports | `src/runtime/ports.ts`, `src/input/InputPort.ts`, `src/runtime/RendererPort.ts`, `src/audio/AudioPort.ts` |
+| input/UI | `src/input/InputPort.ts`, `preview/turbowarp/*`（実Scratch VMプレイヤー） |
 | audio | `src/audio/WebAudioPort.ts`, `SoundManager.ts`, `SoundBank.ts`, `SoundPlayer.ts` |
 | pen | `src/runtime/PenManager.ts` |
 | SB3/tests | `src/sb3/*`, `tests/fixtures/*`, focused tests |
