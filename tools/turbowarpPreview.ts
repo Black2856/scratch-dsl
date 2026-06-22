@@ -1,6 +1,7 @@
 import {createServer, request as httpRequest, type IncomingMessage, type ServerResponse} from 'node:http';
 import {readFile} from 'node:fs/promises';
-import {spawn} from 'node:child_process';
+import {existsSync} from 'node:fs';
+import {spawn, spawnSync} from 'node:child_process';
 import {createRequire} from 'node:module';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -28,11 +29,46 @@ const VENDOR: Record<string, string> = {
     'scratch-svg-renderer.js': 'node_modules/scratch-svg-renderer/dist/web/scratch-svg-renderer.js'
 };
 
-const projectName = process.argv[2];
+const args = process.argv.slice(2);
+const forceUpdate = args.includes('--update');
+const projectName = args.find(arg => !arg.startsWith('--'));
 if (!projectName) {
-    console.error('Usage: npm run preview:tw -- <workspace-project-name>');
+    console.error('Usage: npm run preview -- <workspace-project-name> [--update]');
     process.exitCode = 1;
 }
+
+// Files the preview needs from node_modules. Their absence means `npm install`
+// has not run (fresh checkout), so the preview self-bootstraps.
+const VENDOR_FILES = [
+    'node_modules/@scratch/scratch-vm/dist/web/scratch-vm.js',
+    'node_modules/@scratch/scratch-render/dist/web/scratch-render.js',
+    'node_modules/scratch-storage/dist/web/scratch-storage.js',
+    'node_modules/scratch-svg-renderer/dist/web/scratch-svg-renderer.js',
+    'node_modules/scratch-audio/src/index.js',
+    'node_modules/events/package.json'
+];
+
+/**
+ * Ensures the preview's npm dependencies (@scratch/scratch-vm + scratch-render +
+ * storage/svg/audio + the events polyfill) are present, running `npm install`
+ * once if any are missing. `--update` forces a reinstall to pick up changes.
+ * This is why a single `npm run preview -- <name>` works on a fresh checkout.
+ */
+const ensureVendor = (): void => {
+    const missing = VENDOR_FILES.some(file => !existsSync(path.join(repositoryRoot, file)));
+    if (!forceUpdate && !missing) return;
+    console.log(forceUpdate
+        ? 'Updating preview dependencies (npm install)…'
+        : 'First run: installing preview dependencies (npm install)…');
+    const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+    const result = spawnSync(npm, ['install', '--no-audit', '--no-fund'], {
+        cwd: repositoryRoot,
+        stdio: 'inherit'
+    });
+    if (result.status !== 0) {
+        throw new Error('npm install failed; run it manually and retry.');
+    }
+};
 
 // scratch-audio ships no browser bundle, so bundle its src on demand (cached)
 // into an `AudioEngine` global. `events` is its only Node builtin dependency.
@@ -146,6 +182,7 @@ if (projectName) {
         console.log(`TurboWarp preview already running. Opening ${targetUrl}`);
         openBrowser(targetUrl);
     } else {
+        ensureVendor();
         const server = createServer((req, res) => {
             handle(req, res).catch(error => {
                 send(res, 500, 'text/plain', error instanceof Error ? error.message : String(error));

@@ -70,8 +70,13 @@ Runtime起動とSB3生成へ進まない。
 ## Manual preview
 
 ```powershell
-npm run preview -- <name>
+npm run preview -- <name>            # 1コマンド: 初期化(依存install)→.sb3生成→実VM起動
+npm run preview -- <name> --update   # 依存(@scratch VM/render等)を再installして更新
 ```
+
+この1コマンドで初回は preview に必要な npm 依存（`@scratch/scratch-vm` +
+`scratch-render` + storage/svg/audio + `events`）が未取得なら自動で `npm install`
+する。git cloneは不要（依存はnpm経由）。`--update` で強制再install。
 
 preview serverは作品の `.sb3` をオンデマンドで生成し、実Scratch VM
 （`@scratch/scratch-vm` + `scratch-render`）を読むプレイヤーページとともに配信する。
