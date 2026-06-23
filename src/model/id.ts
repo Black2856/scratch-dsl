@@ -1,7 +1,15 @@
+// Alphabet used to GENERATE our ids (mirrors Scratch's block-id "soup"). Id
+// *generation* stays within this set so authored ids are clean; id *validation*
+// is deliberately broader (below) so imported real-Scratch ids are accepted.
 const ID_CHARACTERS =
     '!#%()*+,-./:;=?@[]^_`{|}~ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 
-const ID_CHARACTER_SET = new Set(ID_CHARACTERS);
+// Real Scratch projects use ids beyond the generator alphabet: cloud-variable
+// ids are `☁ Name` (space + U+2601), and some variable/list ids are the raw
+// name (unicode, spaces, longer than the soup length). SB3 ids are arbitrary
+// JSON strings, so validation only requires a non-empty, bounded string; the
+// real invariants are uniqueness and consistent references, checked elsewhere.
+const MAX_ID_LENGTH = 1024;
 
 export type EntityId = string;
 
@@ -14,8 +22,7 @@ export interface DuplicateId {
 export const isValidId = (value: unknown): value is EntityId =>
     typeof value === 'string' &&
     value.length >= 1 &&
-    value.length <= 64 &&
-    [...value].every(character => ID_CHARACTER_SET.has(character));
+    value.length <= MAX_ID_LENGTH;
 
 export const generateId = (
     length = 20,
