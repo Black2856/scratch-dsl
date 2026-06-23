@@ -3,15 +3,15 @@ import {fileURLToPath} from 'node:url';
 
 import type {DslProject} from '../../src/validation/projectValidator.ts';
 
-export const SAMPLE_COSTUME_ASSET_ID = '98f6a06942fbc776f5c356f57f8dd323';
+export const SAMPLE_COSTUME_ASSET_ID = 'c5af1d0eb19ee8b9d16078c7a855efe5';
 export const SAMPLE_COSTUME_MD5EXT = `${SAMPLE_COSTUME_ASSET_ID}.png`;
-export const SAMPLE_SOUND_ASSET_ID = 'f6dd6ce46ae68b12085fece5b613a4f6';
+export const SAMPLE_SOUND_ASSET_ID = 'e936fe6c4cd92107ab19bf7d959e2078';
 export const SAMPLE_SOUND_MD5EXT = `${SAMPLE_SOUND_ASSET_ID}.mp3`;
 
-export const SAMPLE_COSTUME_SOURCE =
-    'workspace/full-feature-minimal/assets/sprite/font/determination/glyphs/c0041.png';
-export const SAMPLE_SOUND_SOURCE =
-    'workspace/full-feature-minimal/assets/sound_effect/カーソル移動6.mp3';
+// Committed, self-contained fixture assets (repo-root-relative). These replace the
+// previously referenced git-ignored workspace files so `npm test` passes on a clean clone.
+export const SAMPLE_COSTUME_SOURCE = 'tests/fixtures/assets/sample-costume.png';
+export const SAMPLE_SOUND_SOURCE = 'tests/fixtures/assets/sample-sound.mp3';
 
 const sourcePath = (relativePath: string): string =>
     fileURLToPath(new URL(`../../${relativePath.replaceAll('\\', '/')}`, import.meta.url));
