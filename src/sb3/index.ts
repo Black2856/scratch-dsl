@@ -25,3 +25,5 @@ export type {ZipEntry} from './zip.ts';
 export {buildZip, unzipStored, crc32} from './zip.ts';
 export type {Sb3PackageOptions, Sb3PackageResult} from './sb3Packager.ts';
 export {packageSb3} from './sb3Packager.ts';
+export {importSb3} from './import/importProject.ts';
+export type {ImportOptions, ImportResult} from './import/importProject.ts';

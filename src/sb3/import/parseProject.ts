@@ -13,6 +13,7 @@
 
 import {ImportDiagnostics, type Diagnostic, type ImportMode} from './diagnostics.ts';
 import type {ProjectIds, RawProject, RawTarget} from './rawTypes.ts';
+import {asString, isObject} from './guards.ts';
 
 export interface ParseOptions {
     mode?: ImportMode;
@@ -22,11 +23,6 @@ export interface ParseResult {
     project: RawProject | null;
     diagnostics: Diagnostic[];
 }
-
-const isObject = (value: unknown): value is Record<string, unknown> =>
-    typeof value === 'object' && value !== null && !Array.isArray(value);
-
-const asString = (value: unknown): string | null => (typeof value === 'string' ? value : null);
 
 const decodeJson = (input: Uint8Array | string): string =>
     typeof input === 'string' ? input : new TextDecoder('utf-8', {fatal: false}).decode(input);

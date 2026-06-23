@@ -20,6 +20,7 @@ import type {
 import {ImportDiagnostics, type Diagnostic, type ImportMode} from './diagnostics.ts';
 import type {RawProject, RawTarget} from './rawTypes.ts';
 import {rawBlocksToDsl} from './blocksToDsl.ts';
+import {bool, isObject, num, str} from './guards.ts';
 
 export interface RawToDslOptions {
     mode?: ImportMode;
@@ -32,12 +33,6 @@ export interface RawToDslResult {
     diagnostics: Diagnostic[];
 }
 
-const isObject = (value: unknown): value is Record<string, unknown> =>
-    typeof value === 'object' && value !== null && !Array.isArray(value);
-
-const num = (value: unknown, fallback: number): number => (typeof value === 'number' ? value : fallback);
-const str = (value: unknown, fallback: string): string => (typeof value === 'string' ? value : fallback);
-const bool = (value: unknown, fallback: boolean): boolean => (typeof value === 'boolean' ? value : fallback);
 const prim = (value: unknown): string | number | boolean =>
     (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' ? value : '');
 

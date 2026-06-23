@@ -14,6 +14,7 @@ import type {ImportDiagnostics} from './diagnostics.ts';
 import {expandPrimitive} from './primitiveExpand.ts';
 import {restoreInput} from './inputRestore.ts';
 import {parseMutation} from './mutationParse.ts';
+import {asString, isObject} from './guards.ts';
 
 export interface BlockGraph {
     blocks: Record<string, DslBlock>;
@@ -21,15 +22,10 @@ export interface BlockGraph {
     scripts: string[];
 }
 
-const isObject = (value: unknown): value is Record<string, unknown> =>
-    typeof value === 'object' && value !== null && !Array.isArray(value);
-
 // SB3 block keys the DSL models explicitly; anything else is kept opaquely.
 const KNOWN_BLOCK_KEYS = new Set([
     'opcode', 'next', 'parent', 'inputs', 'fields', 'shadow', 'topLevel', 'x', 'y', 'mutation', 'comment'
 ]);
-
-const stringOrNull = (value: unknown): string | null => (typeof value === 'string' ? value : null);
 
 /** Converts an SB3 field (`[value]` or `[value, id]`) to a DSL field. */
 const toField = (raw: unknown): DslField | null => {
@@ -70,13 +66,13 @@ export const rawBlocksToDsl = (
     for (const [blockId, rawValue] of Object.entries(rawBlocks)) {
         if (!isObject(rawValue)) continue; // W2 already diagnosed non-object blocks
         const path = `${pathBase}.${blockId}`;
-        const opcode = stringOrNull(rawValue.opcode) ?? '';
+        const opcode = asString(rawValue.opcode) ?? '';
 
         const block: DslBlock = {
             id: blockId,
             opcode,
-            next: stringOrNull(rawValue.next),
-            parent: stringOrNull(rawValue.parent),
+            next: asString(rawValue.next),
+            parent: asString(rawValue.parent),
             inputs: {},
             fields: {},
             shadow: rawValue.shadow === true,
