@@ -28,7 +28,7 @@ flowchart LR
 | Runtime / Scheduler / ThreadRunner | lifecycle、tick、thread状態遷移 | P0 |
 | EventBus / BroadcastManager | hats起動、broadcast wait | P0 |
 | VariableStore / ListStore | global/localデータと監視通知 | P0 |
-| Renderer / Drawable / Skin | 480×360描画、変換、レイヤ | P0 |
+| ~~Renderer / Drawable / Skin~~ | 削除済み。視覚は実 Scratch VM + scratch-render で実行 (`npm run preview`/`shot`) | — |
 | Asset/Costume/Sound Manager | asset ID、decode、参照管理 | P0 |
 | Input/Sensing Manager | keyboard、mouse、timer | P0 |
 | CloneManager | clone生成・破棄・上限 | P1 |

@@ -8,7 +8,7 @@ import type {
     PenAttributes,
     PenPoint,
     RendererPort
-} from '../../src/render/RendererPort.ts';
+} from '../../src/runtime/RendererPort.ts';
 import {Runtime} from '../../src/runtime/Runtime.ts';
 import {
     createBroadcastBasicProject,

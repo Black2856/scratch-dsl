@@ -8,13 +8,6 @@
 - After material changes, update the relevant document when behavior or design has changed.
 - In the final response, include a short `docs Update Proposal` when documentation should be added or revised. Include an `AGENTS.md Update Proposal` only when repository-wide guidance must change.
 
-## Task and Model Optimization
-
-- Decompose complex tasks into independently verifiable parts.
-- Use sub-agents only when parallel work materially improves speed or review quality; give each a narrow, non-overlapping scope.
-- Match reasoning depth and available model capability to risk: stronger reasoning for architecture and compatibility, faster execution for bounded mechanical work.
-- Prefer targeted reads and focused tests; do not trade correctness for token savings.
-
 ## Current Status and Roadmap
 
 This is a Scratch 3-compatible DSL foundation, not a complete Scratch clone.
@@ -43,8 +36,8 @@ Do not implement a later phase unless explicitly requested.
 - Local Scratch works live under `workspace/<name>/`, one directory per work directly inside `workspace/`; keep their `project.ts`, `assets.json`, per-work `assets/`, and generated `output/` there.
 - Scaffold new works with `npm run new -- <name>`; it creates `workspace/<name>/` with a minimal valid `project.ts`, an empty `assets.json`, an empty `assets/`, and `output/`, and refuses to overwrite an existing directory.
 - Asset `source` paths in both `assets.json` and the DSL are repository-root-relative (e.g. `workspace/<name>/assets/sprite/foo.png`), matching `meta.source`; `loadWorkspaceProject` resolves them from the repository root.
-- Use the same validated `project.ts` DSL for both `npm run preview -- <name>` and `npm run sb3 -- <name>`.
-- Keep reusable preview/CLI mechanisms in `preview/`, `tools/`, and `src/`; do not move common Runtime/Renderer/SB3 code into a workspace project.
+- Use the same validated `project.ts` DSL for both `npm run preview -- <name>` (real Scratch VM + renderer) and `npm run sb3 -- <name>`.
+- Keep reusable preview/CLI mechanisms in `preview/`, `tools/`, and `src/`; do not move common Runtime/SB3 code into a workspace project.
 - `workspace/` is intentionally gitignored. Keep CI and regression fixtures under `tests/fixtures/`.
 - Phase 7 assets live in each work's own `assets/` (`workspace/<name>/assets/{sprite,sound_effect,music}/`); there is no shared asset pool. Asset-backed regression fixtures read from the bundled `full-feature-minimal/assets/`.
 - Use `music/`, `sound_effect/`, and `sprite/` assets from a work's `assets/` directory for fixtures and SB3 tests.
@@ -91,11 +84,11 @@ DSL
 - Keep IDs stable and project-wide unique; never renumber on save.
 - Stage owns broadcast declarations. Stage variables/lists are global; Sprite variables/lists are local.
 - Preserve unknown opcodes with diagnostics; do not silently discard them. New AI-authored projects should use only registered, implemented opcodes.
-- Validation, model, and Runtime must remain independent of DOM, Canvas, Web Audio, and ZIP implementations.
-- Runtime depends on ports (`RendererPort`, `InputPort`, `RuntimeAudioPort`), not browser implementations.
-- A costume-less Stage is transparent; do not render the Sprite fallback drawable for it.
-- Runtime clones inherit the source Sprite skin through the RendererPort clone seam.
-- `motion_movesteps` updates live Sprite coordinates and draws a pen segment when the pen is down.
+- Validation, model, and Runtime must remain independent of DOM, Web Audio, and ZIP implementations.
+- Runtime depends on ports (`InputPort`, `RuntimeAudioPort`), not browser implementations.
+- Visual/audio output is not reimplemented in-repo. Preview and verification run the
+  exported `.sb3` in the real Scratch VM + renderer (`npm run preview` / `npm run shot`,
+  backed by `@scratch/scratch-vm` + `scratch-render`). There is no self-made Canvas renderer.
 - Future SB3 import must preserve unknown blocks, mutations, extensions, comments, monitors, and metadata. Phase 8 is not implemented.
 
 ## Validation and DSL Changes
@@ -136,18 +129,18 @@ include `.ts`.
 ```powershell
 npm install
 npm test
-npm run test:e2e
-npm run preview -- full-feature-minimal
 npm run sb3 -- full-feature-minimal
+npm run preview -- full-feature-minimal   # runs the .sb3 in the real Scratch VM + renderer
 node --experimental-strip-types --check src/validation/projectValidator.ts
 ```
 
 If PowerShell blocks `npm.ps1` or `npx.ps1`, use `npm.cmd` / `npx.cmd`.
 
-- Use `node:test` and `node:assert/strict` for DOM-free behavior.
-- Use Playwright only for browser, Canvas, DOM event, image decode, or Web Audio behavior.
+- Use `node:test` and `node:assert/strict` for all behavior; the headless Runtime is DOM-free.
+- For visual/behaviour truth, run the exported `.sb3` in the real Scratch VM via
+  `npm run preview` (browser) or `npm run shot` (Playwright screenshot + state JSON for an agent).
 - Run focused tests while iterating and the relevant full suite before handoff.
-- Do not make external Scratch/TurboWarp site automation a normal test dependency.
+- Do not make external Scratch/TurboWarp site automation a normal test dependency (the preview runs locally).
 
 ## Coding and Change Scope
 

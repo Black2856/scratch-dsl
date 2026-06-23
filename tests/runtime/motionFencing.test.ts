@@ -3,8 +3,8 @@ import test from 'node:test';
 
 import {createProject} from '../../src/model/ProjectFactory.ts';
 import {Runtime} from '../../src/runtime/Runtime.ts';
-import {computeLocalBounds, fencePosition} from '../../src/render/fencing.ts';
-import type {DrawableState, RendererPort} from '../../src/render/RendererPort.ts';
+import {computeLocalBounds, fencePosition} from '../../src/runtime/fencing.ts';
+import type {DrawableState, RendererPort} from '../../src/runtime/RendererPort.ts';
 import type {DslBlock, DslProject} from '../../src/validation/projectValidator.ts';
 
 /**

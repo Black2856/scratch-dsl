@@ -1,198 +1,189 @@
 # htmlJs2sb3
 
-Scratch-compatible DSLを正本として、検証、HTML/JavaScript Runtimeでの実行確認、`.sb3`出力を行う段階的な互換基盤です。Scratch完全互換や公式GUIの再現は目的としていません。
+Scratch互換のDSL（`project.ts`）を正本に、検証して `.sb3` を出力し、その `.sb3` を
+**本物のScratch VM + renderer**（`@scratch/scratch-vm` + `scratch-render`）で実行・確認
+するためのツールです。Scratch完全互換や公式GUIの再現は目的にしていません。
 
 ```text
 DSL (project.ts)
-  ├─ validate → Project / Runtime → Node・ブラウザ(preview)・Playwrightで実行確認
-  └─ validate → project.json + assets → .sb3 → scratch-parserで形式検証
+  ├─ validate → project.json + assets → .sb3   （Scratchで開ける成果物）
+  └─ validate → headless Runtime               （決定的ロジックの即時確認）
+            .sb3 → 実Scratch VM + scratch-render（視覚・音・最終挙動の確認）
 ```
 
-`scratch-parser`通過はSB3形式の妥当性確認です。Scratch公式エディタやTurboWarpでの完全な動作保証ではありません。
+`scratch-parser` 通過はSB3形式の妥当性確認です。最終的な見た目・音・挙動の正本は
+実Scratch VM（`npm run preview` / `npm run shot`）で確認します。
 
-## 現在の状態
+---
 
-Phase 0〜6が完了し、検証、ドメインモデル、Runtime、Canvas/input、asset/audio、clone/procedure/pen/monitor、DSL→SB3出力までを実装済みです。Phase 7としてAI生成用fixture、検証フロー、実エディタ手動確認準備を整備しています。Phase 7.1では、ローカル作品を`workspace/<name>/`に置き、同じDSLをmanual previewとSB3 exportへ渡すフローを追加しています。
+# 1. 作品をつくる（このツールで Scratch 作品を開発する人向け）
 
-Phase 8（既存SB3 import）以降は未実装です。
+DSL（`project.ts`）を書き、`.sb3` を出力して、本物のScratchで実行確認する、という流れです。
+
+## クイックスタート
+
+```powershell
+npm run new -- my-project        # 雛形を workspace/my-project/ に作成
+# workspace/my-project/project.ts を編集（素材は assets/ + assets.json）
+npm run preview -- my-project    # 実Scratch VMで実行（初回は依存を自動install）
+npm run sb3 -- my-project        # .sb3 を出力（scratch-parser検証つき）
+```
+
+`npm run preview` の1コマンドだけで、初回は必要な依存（`@scratch/scratch-vm` +
+`scratch-render` ほか）が未取得なら自動で `npm install` し、`.sb3` を生成して、
+ローカルで本物のScratch VM + rendererを起動しブラウザを開きます。
+
+## ワークスペース構成
+
+各作品は `workspace/` 直下に1作品1ディレクトリで並べます。素材は各作品の `assets/`
+に同梱し、共有プールは持ちません。`workspace/` はローカル作業用でGit追跡対象外です。
+
+```text
+workspace/
+  <project-name>/
+    project.ts     DSL正本（default export、または named export "project"）
+    assets.json    asset manifest（assets配列）
+    assets/        この作品の costume / sound 素材
+      sprite/ sound_effect/ music/
+    output/        npm run sb3 の出力先（自動生成）
+```
+
+- `<project-name>` は英数字始まり、英数字・ハイフン・アンダースコアのみ。
+- `project.ts` のDSLが preview と SB3 export の唯一の正本です。
+- `assets.json` と `project.ts` の `source` はリポジトリルート基準のパス（例:
+  `workspace/<name>/assets/sprite/foo.png`）。`assetId` は実bytesのMD5、`md5ext` は
+  `assetId.dataFormat` として一致させます。
+
+読み込み時（`tools/workspaceProject.ts`）に次を検証し、errorが1件でもあれば
+preview/SB3 とも処理を中止します: DSL validation、manifest形状と `assetId` 重複、
+`md5ext` 一致、素材bytesのMD5一致、DSLとmanifestの参照整合。
+
+## preview（実Scratch VMで実行）
+
+```powershell
+npm run preview -- <name>            # 初期化(依存install)→.sb3生成→実VM起動
+npm run preview -- <name> --update   # 依存を再installして更新
+```
+
+`.sb3` をオンデマンドで生成し、`@scratch/scratch-vm` + `scratch-render` を読む
+プレイヤーページで実行します。視覚・音声・collision・fencing・touching などはすべて
+本物のVMが担います。緑の旗 / Stop / キーボード / マウス入力もVMへ渡ります。
+依存はnpm経由なのでgit cloneは不要です。`Ctrl+C` でサーバ停止。
+
+## shot（スクリーンショット + 状態の取得）
+
+```powershell
+npm run shot -- <name> [--keys 2,space] [--wait 3000]
+```
+
+Playwrightで同じプレイヤーを駆動し、stageのスクリーンショットを
+`workspace/<name>/output/<name>-shot.png` に保存し、VMの状態（変数・スプライト座標）を
+JSONで出力します。AIや自動確認で「描画結果」を取得する用途に使えます。
+
+## .sb3 出力
+
+```powershell
+npm run sb3 -- <name>
+```
+
+検証済みDSLからSB3（`project.json` + assets のZIP）を生成し、`scratch-parser` で
+形式検証してから `workspace/<name>/output/<name>.sb3` へ出力します。SB3はRuntimeの
+可変状態からではなく、検証済みDSLからのみ生成します。生成された `project.json` や
+ZIPは編集せず、変更はDSLを編集して再生成します。
+
+## 新しい作品を追加する手順
+
+1. `npm run new -- <name>` で雛形生成（手動なら同じ構成を用意）。
+2. `project.ts` のDSLを編集する（登録・実装済みopcodeのみ使用）。
+3. 素材を `assets/` へ置き、`assets.json` に `assetId`(=実bytesのMD5)・`md5ext`・
+   `dataFormat`・`kind`・`mimeType`・`source` を記述する。
+4. `npm run preview -- <name>` で実行確認する。
+5. `npm run sb3 -- <name>` でSB3を出力し、`scratch-parser` 通過を確認する。
+
+## 作品オーサリングのルール
+
+- DSLを編集し、生成済み `project.json` や SB3 ZIP を直接編集しない。
+- Runtime状態からSB3を生成しない。
+- IDを保存ごとに再採番しない（プロジェクト全体で一意かつ安定）。
+- 新規作品では登録・実装済みopcodeだけを使う。
+- asset追加時は bytes・MD5・assetId・md5ext を同時に確認する。
+
+詳細: `docs/main_design/{AI_GENERATION_WORKFLOW_SPEC, DSL_AUTHORING_GUIDE_FOR_AI,
+WORKSPACE_PROJECT_FLOW, SB3_REAL_EDITOR_VERIFICATION_SPEC}.md`, `docs/templates/`。
+
+---
+
+# 2. リポジトリを開発する（このツール自体の開発者向け）
+
+## アーキテクチャ
+
+```text
+DSL（唯一の正本）
+  ├─ validate → Project / Runtime（headless・決定的ロジック）
+  └─ validate → SB3 serializer → project.json + assets → .sb3
+```
+
+- **視覚・音声・collision の正本は実Scratch VM**（`@scratch/scratch-vm` +
+  `scratch-render`）。本リポジトリに自作のCanvas rendererは持たない。`npm run preview`
+  / `npm run shot` が `.sb3` を実VMで実行して確認する。
+- **headless Runtime** は control / event / clone / 変数 / リスト / operator / procedure
+  などの決定的ロジックを `node:test` で検証する高速な内ループ。`RendererPort` は
+  テスト用 fake port のための seam として残す（本番では未接続=no-op）。
+- 検証・model・Runtime は DOM / Web Audio / ZIP の具体実装に依存しない。
 
 ## リポジトリ構成
 
 ```text
-src/            検証・モデル・Runtime・render・audio・input・sb3など本体
-  validation/   validateProject（検証の入口）
-  model/        Project/Stage/Sprite/Cloneなどドメインモデル
-  runtime/      Runtime・Thread・Sequencer・各Manager
-  render/       CanvasRenderer・RendererPort・costume skin loader
-  input/        DomInputManager・InputPort
-  audio/        SoundManager・WebAudioPort・AudioPort
-  sb3/          sb3Packager（.sb3生成）
-preview/        ブラウザ手動preview（manual-preview.html / .ts）
-tools/          previewProject.ts（previewサーバ）・exportSb3.ts・workspaceProject.ts
+src/
+  validation/   validateProject（検証の入口）, blockGraphValidator
+  blocks/       opcodeMetadata（opcode定義の正本）
+  model/        Project / Stage / Sprite / Target / Clone / Stores
+  runtime/      Runtime / Thread / Sequencer / 各Manager / primitives /
+                RendererPort・coordinates・fencing・penColor（Runtime支援）
+  cast/         Cast / MathUtil（Scratch互換の型変換・数値）
+  audio/        SoundManager / WebAudioPort / AudioPort
+  input/        InputPort
+  sb3/          sb3Packager（.sb3生成）, serializer, extension/asset collector
+  assets/       AssetManager / MD5 / validation
+preview/turbowarp/  実Scratch VM + scratch-render を読むプレイヤーページ
+tools/          turbowarpPreview.ts（previewサーバ）, turbowarpShot.ts（screenshot+状態）,
+                exportSb3.ts, workspaceProject.ts, newProject.ts
 schemas/        project.schema.json
-tests/          ユニットテスト・fixtures・e2e(Playwright)
-docs/           設計ドキュメント（main_design/が中心）
-workspace/      ローカル作品（直下に1作品1ディレクトリ、各作品が自分のassets/を持つ）（Git追跡対象外）
-scratch-*/      上流Scratch公式リポジトリの固定checkout（read-only / 調査用）
+tests/          ユニットテスト（node:test）, fixtures/, smoke/（実VM Playwright）
+docs/           設計ドキュメント（main_design/ が中心）
+workspace/      ローカル作品（Git追跡対象外）
+scratch-*/      上流Scratch公式リポジトリの固定checkout（read-only / 意味論調査用）
 ```
 
 ## セットアップとテスト
 
-Node.js 22以上を使用します（確認環境: v22.17.0）。
+Node.js 22以上（type stripping でTypeScriptを直接実行）。相対ESM importは `.ts` を付ける。
 
 ```powershell
 npm install
-npm test          # ユニットテスト（validation/model/runtime/render/input/assets/audio/sb3/compatibility）
-npm run test:e2e  # Playwrightによるブラウザe2e（Canvas/DOM input/pen）
-```
-
-PowerShellの実行ポリシーで`npm.ps1`が拒否される場合は`npm.cmd`、`npx.ps1`の場合は`npx.cmd`を使います。
-
-## Workspace project
-
-各作品は`workspace/`直下に1作品1ディレクトリで並べます。素材は各作品の`assets/`に同梱し、共有プールは持ちません。`workspace/`はローカル作業用でGit追跡対象外です。
-
-```text
-workspace/
-  <project-name>/        作品（workspace/直下に並ぶ）
-    project.ts           DSL正本（default export、または named export "project"）
-    assets.json          asset manifest（assets配列）
-    assets/              この作品のcostume/sound素材
-      sprite/ sound_effect/ music/
-    output/              npm run sb3 の出力先（自動生成）
-```
-
-- `<project-name>`は英数字で始まり、英数字・ハイフン・アンダースコアのみ使用できます。
-- `project.ts`のdefault exportをDSL正本として、previewとSB3 exportの両方で同じものを使います。
-- `assets.json`と`project.ts`の`source`はリポジトリルート基準のパスです（例: `workspace/<name>/assets/sprite/foo.png`）。`meta.source`・DSLの`assets[].source`と同じ基準で揃えます。`assetId`は実bytesのMD5、`md5ext`は`assetId.dataFormat`として一致させます。
-
-読み込み時（`tools/workspaceProject.ts`）に次を検証し、errorが1件でもあればpreview/SB3とも処理を中止します。
-
-- DSL validation（`validateProject`）
-- manifestの形状（必須フィールド）と`assetId`重複
-- `md5ext`が`assetId.dataFormat`と一致するか
-- 素材bytesの実MD5が`assetId`と一致するか
-- DSLとmanifestの参照整合（dangling参照・kind/dataFormat/md5ext不一致）
-- manifestにあるがDSLが参照しない素材はwarning（処理は継続）
-
-同梱例として`workspace/full-feature-minimal/`があります。
-
-### 新規作品をコマンドで作成
-
-雛形（型）はコマンドで生成します。`workspace/<name>/`に最小の有効なDSL（`project.ts`）、空の`assets.json`、空の`assets/`、`output/`を作成します。
-
-```powershell
-npm run new -- my-project
-```
-
-- 生成される`project.ts`は検証を通過し、preview/sb3がそのまま実行できる最小骨組み（緑の旗→10歩動く）です。素材は持ちません。
-- 既存ディレクトリがある名前は上書きせず中止します。
-- 名前は英数字始まりで英数字・ハイフン・アンダースコアのみ使用できます。
-
-生成後は`project.ts`を編集し、素材が必要なら`assets/`へファイルを置いて`assets.json`へ追記してから`npm run preview`/`npm run sb3`で確認します。
-
-## プロジェクトの起動（手動preview）
-
-DSLをブラウザのRuntime/Rendererで実行確認します。esbuildで`preview/manual-preview.ts`をバンドルし、ローカルHTTPサーバ（既定`http://localhost:4173`）を立ち上げ、既定でブラウザを自動で開きます。
-
-```powershell
-npm run preview -- full-feature-minimal
-```
-
-オプション:
-
-| オプション | 説明 |
-| --- | --- |
-| `--port <n>` | 待受ポート（既定`4173`、1〜65535） |
-| `--no-open` | ブラウザを自動で開かない（環境変数`PREVIEW_NO_OPEN=1`でも可） |
-
-```powershell
-npm run preview -- full-feature-minimal --port 5000 --no-open
-```
-
-画面には480×360 Canvas、緑の旗、Stop、thread/clone/asset/audio状態、frame数、現在実行中ブロック、diagnosticsが表示されます。`Ctrl+C`でサーバを停止します。
-
-### 実行の挙動
-
-- **緑の旗**: AudioContextを開始（ブラウザの自動再生制限のためクリック内で開始）し、`runtime.greenFlag()`を呼んで全`event_whenflagclicked`スレッドを起動します。Projectインスタンスは初回読み込み時に一度だけ生成し、緑の旗の再押下では**再生成せず再利用**します。そのためスプライトの座標は前回実行で移動した位置を保持したまま起動し、Scratch本来の「現在位置から相対的に動く」挙動になります（毎回初期座標へリセットされません）。
-- **Stop**: 全スレッド停止、音声停止、最終フレーム描画を行います。pen layerは緑の旗でもStopでも消去しません（Scratch準拠）。
-- **motion / pen**: `motion_movesteps` / `motion_gotoxy` / `motion_setx` / `motion_sety` / `motion_changexby` / `motion_changeyby`でライブ座標を更新し、pen down中の移動は移動前後の座標を結ぶ線としてpen layerへ描画します。
-- **fencing**: previewはrenderer接続時、Scratch同様にスプライトを画面内に留めます（`getFencedPosition`）。`full-feature-minimal`のスプライトが画面外へ完全に消えないのは移動量や見た目の大きさのためではなく、このfencingでbounding boxが最低15px程度Stage内に残るためです。例えば「x座標を300にする」相当はコスチューム寸法に応じて x=261 付近に補正されます（headless/rendererなしでは補正されず素通し）。
-- **costume / clone**: costumeなしStageは透明背景として扱い、cloneは元Spriteのcostume skinを引き継ぎます。
-
-> 座標を初期値に戻して実行し直したい場合は、ブラウザを再読み込みする（=`load()`が再実行されProjectが作り直される）か、previewサーバを再起動します。
-
-## .sb3 出力
-
-検証済みDSLからSB3（`project.json` + assets のZIP）を生成し、`scratch-parser`で形式検証してからファイル出力します。
-
-```powershell
+npm test            # ユニットテスト（node:test, DOM非依存）
+npm run test:smoke  # 実Scratch VMで .sb3 をload→状態確認（Playwright, ブラウザ要）
 npm run sb3 -- full-feature-minimal
+npm run preview -- full-feature-minimal
+node --experimental-strip-types --check src/validation/projectValidator.ts
 ```
 
-- 出力先: `workspace/<project-name>/output/<project-name>.sb3`
-- 成功時は出力パス、バイト数、`scratch-parser: pass`を表示します。
-- DSL validation、asset MD5検査、packaging、`scratch-parser`検証のいずれかが失敗した場合は出力せず、診断を表示して終了コード1で終わります。
+- 挙動の自動回帰は `node:test`（renderer非依存、fake portで fencing/touching 等も検証）。
+- `npm run test:smoke` は本物のVMでプレビュー経路を確認するスモーク（`workspace/` に
+  対象作品が必要。無ければスキップ）。
+- 外部Scratch/TurboWarpサイトの自動操作は常用テスト依存にしない（プレビューはローカル実行）。
+- PowerShellで `npm.ps1` / `npx.ps1` が拒否される場合は `npm.cmd` / `npx.cmd`。
 
-SB3はRuntimeの可変状態からではなく、検証済みDSLからのみ生成します（Runtime-only cloneは出力されません）。生成された`project.json`やZIPは編集せず、変更はDSLを編集して再生成します。
+## DSLを変更するとき
 
-## 新しい作品を追加する
+- `schemas/project.schema.json` と手書きvalidatorの両方を更新する。
+- focused fixtureとテストを追加する。
+- input / field / shadow / shape / target のルールは `src/blocks/opcodeMetadata.ts`
+  または検証済み上流ソースから取得し、推測しない。
 
-1. `npm run new -- <name>`で`workspace/<name>/`を雛形生成する（手動で作る場合は同じ構成を用意する）。
-2. `project.ts`のDSLを編集する（登録・実装済みopcodeのみ使用）。
-3. 使用する素材を作品の`assets/`へ置き、`assets.json`に`assetId`(=実bytesのMD5)・`md5ext`・`dataFormat`・`kind`・`mimeType`・`source`(=リポジトリルート基準パス、例 `workspace/<name>/assets/sprite/foo.png`)を記述する。
-4. `npm run preview -- <name>`で実行確認する。
-5. `npm run sb3 -- <name>`でSB3を出力し、`scratch-parser`通過を確認する。
+## スコープ
 
-詳細フローは`docs/main_design/WORKSPACE_PROJECT_FLOW.md`を参照してください。
-
-## Phase 7 sample fixtures
-
-`tests/fixtures/phase7SampleProjects.ts`に次のfixtureがあります。
-
-- hello-world
-- motion-basic
-- variable-score
-- broadcast-basic
-- list-basic
-- keyboard-control
-- procedure-basic
-- clone-basic
-- pen-basic
-- sound-basic
-- full-feature-minimal
-
-各fixtureはvalidator、Runtime境界、SB3 packaging、scratch-parserで確認します。Canvas、DOM input、penはPlaywrightでも確認します。
-
-## Test assets
-
-素材は各作品の`assets/`に同梱します。asset-backedなPhase 7 fixture（`tests/fixtures/phase7SampleAssets.ts`）は、同梱例`full-feature-minimal`の`assets/`配下の素材を共有して読み込みます。外部素材を無断で追加しません。
-
-現在使用する素材:
-
-- `workspace/full-feature-minimal/assets/sprite/font/determination/glyphs/c0041.png`
-- `workspace/full-feature-minimal/assets/sound_effect/カーソル移動6.mp3`
-
-assetIdは実bytesのMD5、`md5ext`は`assetId.dataFormat`として一致させます。
-
-## Authoring rules
-
-- DSLを編集し、生成済み`project.json`やSB3 ZIPを直接編集しない。
-- Runtime状態からSB3を生成しない。
-- IDを保存ごとに再採番しない（プロジェクト全体で一意かつ安定）。
-- 新規作品では登録・実装済みopcodeだけを使う。
-- asset追加時はbytes、MD5、assetId、md5extを同時に確認する。
-
-DSL変更時は`schemas/project.schema.json`と手書きvalidatorの両方を更新し、fixtureとテストを追加します。
-
-詳細:
-
-- `docs/main_design/AI_GENERATION_WORKFLOW_SPEC.md`
-- `docs/main_design/DSL_AUTHORING_GUIDE_FOR_AI.md`
-- `docs/main_design/WORKSPACE_PROJECT_FLOW.md`
-- `docs/main_design/SB3_REAL_EDITOR_VERIFICATION_SPEC.md`
-- `docs/templates/`
-
-## Scope
-
-Phase 7では新Runtime/Renderer機能、SB3 import、editor shell、外部Scratch/TurboWarpサイト操作の自動化を行いません。Phase 8/9の対象は`docs/NEXT_PHASE_ROADMAP(7~9).md`を参照してください。
+- Phase 0〜7.2 まで実装済み（検証・model・Runtime・asset/audio・clone/procedure/pen/
+  monitor・DSL→SB3、Phase 7.2 の互換opcode拡張）。
+- Phase 8（既存SB3 import）以降は未実装。
+- 詳細は `AGENTS.md` と `docs/NEXT_PHASE_ROADMAP(7~9).md`。

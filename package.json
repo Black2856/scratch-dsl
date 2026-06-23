@@ -5,15 +5,22 @@
   "type": "module",
   "description": "段階的 Scratch 3.0 互換 DSL 基盤 (pseudo Runtime / Editor / Asset / .sb3)",
   "scripts": {
-    "test": "node --no-warnings --experimental-strip-types --test tests/validation/*.test.ts tests/model/*.test.ts tests/runtime/*.test.ts tests/render/*.test.ts tests/input/*.test.ts tests/assets/*.test.ts tests/audio/*.test.ts tests/sb3/*.test.ts tests/compatibility/*.test.ts",
-    "test:e2e": "node tests/e2e/run.mjs",
-    "preview": "node --no-warnings --experimental-strip-types tools/previewProject.ts",
+    "test": "node --no-warnings --experimental-strip-types --test tests/validation/*.test.ts tests/model/*.test.ts tests/runtime/*.test.ts tests/input/*.test.ts tests/assets/*.test.ts tests/audio/*.test.ts tests/sb3/*.test.ts tests/compatibility/*.test.ts",
+    "preview": "node --no-warnings --experimental-strip-types tools/turbowarpPreview.ts",
+    "shot": "node --no-warnings --experimental-strip-types tools/turbowarpShot.ts",
+    "test:smoke": "node --no-warnings --experimental-strip-types tests/smoke/realVmPreview.smoke.ts",
     "sb3": "node --no-warnings --experimental-strip-types tools/exportSb3.ts",
     "new": "node --no-warnings --experimental-strip-types tools/newProject.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",
+    "@scratch/scratch-render": "^14.1.0",
+    "@scratch/scratch-vm": "^14.1.0",
     "esbuild": "^0.24.0",
-    "scratch-parser": "^6.0.0"
+    "events": "^3.3.0",
+    "scratch-audio": "^2.0.268",
+    "scratch-parser": "^6.0.0",
+    "scratch-storage": "^6.2.1",
+    "scratch-svg-renderer": "^2.4.7"
   }
 }

@@ -98,6 +98,7 @@ export class BlockUtil {
     setXY(x: number, y: number): void {
         if (this.target.isStage) return;
         const sprite = this.target;
+        const from = {x: sprite.x, y: sprite.y};
         const fenced = this.runtime.renderer?.getFencedPosition?.(
             sprite.id,
             x,
@@ -108,6 +109,17 @@ export class BlockUtil {
             sprite.setPosition(fenced[0], fenced[1]);
         } else {
             sprite.setPosition(x, y);
+        }
+        // Pen draws a segment on *any* position change while down (goto, glide,
+        // set x/y, change x/y, move steps), matching the official RenderedTarget
+        // move seam — not only `move steps`.
+        const pen = this.runtime.pen.getState(sprite.id);
+        if (pen.down) {
+            this.runtime.renderer?.penLine?.(
+                from,
+                {x: sprite.x, y: sprite.y},
+                {color: pen.color, size: pen.size}
+            );
         }
     }
 

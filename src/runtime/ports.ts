@@ -27,3 +27,55 @@ export class SystemRandomPort implements RandomPort {
         return Math.random();
     }
 }
+
+/**
+ * Wall-clock seam for `sensing_current` / `sensing_dayssince2000`. Separate
+ * from ClockPort (which is a monotonic scheduler clock): this returns a real
+ * calendar Date so date-part reporters and the days-since-2000 calculation can
+ * be made deterministic in tests with a FakeWallClock.
+ */
+export interface WallClockPort {
+    /** Current calendar date/time. */
+    nowDate(): Date;
+}
+
+/**
+ * User/network environment seam for `sensing_username` / `sensing_online`.
+ * Headless default returns an empty username and '' (unknown) online status,
+ * matching the official VM's "no audioEngine/userData" guards. A browser
+ * adapter can return navigator.onLine and an injected username. This never
+ * contacts the Scratch website or performs any network I/O.
+ */
+export interface UserEnvironmentPort {
+    getUsername(): string;
+    /** true/false when known, '' when unknown (headless default). */
+    isOnline(): boolean | '';
+}
+
+/**
+ * Microphone loudness seam for `sensing_loudness` / `event_whengreaterthan`'s
+ * loudness branch. Returns 0..100, or -1 when no microphone/permission is
+ * available (matching the official VM's "no audioEngine → -1"). A browser
+ * adapter wires this to an AnalyserNode; headless Runtimes leave it unset and
+ * loudness reads -1.
+ */
+export interface LoudnessPort {
+    getLoudness(): number;
+}
+
+/** Default WallClockPort backed by the system clock. Node-safe (no DOM). */
+export class SystemWallClockPort implements WallClockPort {
+    nowDate(): Date {
+        return new Date();
+    }
+}
+
+/** Default UserEnvironmentPort: empty username, unknown online status. */
+export class DefaultUserEnvironmentPort implements UserEnvironmentPort {
+    getUsername(): string {
+        return '';
+    }
+    isOnline(): boolean | '' {
+        return '';
+    }
+}

@@ -12,6 +12,8 @@ export class SoundBank<TDecoded = unknown, TPlayback = unknown> {
     private readonly audio: AudioPort<TDecoded, TPlayback>;
     private readonly players = new Map<string, SoundPlayer<TDecoded, TPlayback>>();
     private volume = 100;
+    private pitch = 0;
+    private pan = 0;
 
     constructor(targetId: string, audio: AudioPort<TDecoded, TPlayback>) {
         this.targetId = targetId;
@@ -29,12 +31,22 @@ export class SoundBank<TDecoded = unknown, TPlayback = unknown> {
         }
     }
 
+    /** Sets this target's pitch/pan and applies them to every (active) player. */
+    setEffects(pitch: number, pan: number): void {
+        this.pitch = pitch;
+        this.pan = pan;
+        for (const player of this.players.values()) {
+            player.setEffects(pitch, pan);
+        }
+    }
+
     add(soundId: string, decoded: TDecoded): SoundPlayer<TDecoded, TPlayback> {
         const previous = this.players.get(soundId);
         previous?.stop();
 
         const player = new SoundPlayer(this.audio, decoded);
         player.setVolume(this.volume);
+        player.setEffects(this.pitch, this.pan);
         this.players.set(soundId, player);
         return player;
     }
@@ -63,6 +75,8 @@ export class SoundBank<TDecoded = unknown, TPlayback = unknown> {
     cloneInto(targetId: string): SoundBank<TDecoded, TPlayback> {
         const clone = new SoundBank<TDecoded, TPlayback>(targetId, this.audio);
         clone.volume = this.volume;
+        clone.pitch = this.pitch;
+        clone.pan = this.pan;
         for (const [soundId, player] of this.players) {
             clone.add(soundId, player.decodedBuffer);
         }

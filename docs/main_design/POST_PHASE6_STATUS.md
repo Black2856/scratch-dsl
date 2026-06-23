@@ -1,5 +1,12 @@
 # Phase 6 完了時点の現状
 
+> **現状更新 (render方針変更):** 自作の Canvas 2D Renderer / Skin / Drawable と
+> その preview・E2E は削除した。視覚・音声・collision の正本は **実 Scratch VM
+> (`@scratch/scratch-vm` + `scratch-render`)** で、`npm run preview`（ブラウザ）/
+> `npm run shot`（Playwright screenshot + 状態JSON）が `.sb3` を実行して検証する。
+> 本リポジトリの Runtime は決定的ロジック中心で、`RendererPort` は fake port 用の
+> seam として残す。本書の Phase 3「Canvas Renderer」等の記述は歴史的経緯として残置。
+
 ## 目的
 
 Phase 0〜6で成立した機能、責務境界、保証範囲を固定する。本書はScratch完全互換を宣言するものではなく、次フェーズの判断基準である。
@@ -11,7 +18,7 @@ Phase 0〜6で成立した機能、責務境界、保証範囲を固定する。
 | 0 | DSL schema、ID、Cast、opcode metadata、validator |
 | 1 | Project、Stage、Sprite、Target、BlockContainer、Stores |
 | 2 | Runtime、Scheduler、Thread、BlockRunner |
-| 3 | Canvas 2D Renderer、座標変換、DOM入力 |
+| 3 | 座標変換、DOM入力 *(旧: 自作Canvas 2D Renderer は削除済み)* |
 | 4 | AssetManager、MD5、簡易Web Audio |
 | 5 | clone、procedure、pen、monitorの最小実装 |
 | 6 | DSLからproject.jsonへの変換、SB3 ZIP packaging、scratch-parser検証 |
@@ -20,7 +27,7 @@ Phase 0〜6で成立した機能、責務境界、保証範囲を固定する。
 
 ```text
 Scratch互換DSL（唯一の正本）
-  ├─ validate → Project/Runtime → headless・Canvas・audioで実行確認
+  ├─ validate → Project/Runtime → headless・audioで実行確認（視覚確認は実Scratch VMで行う）
   └─ validate → SB3 serializer → project.json + assets → .sb3
 ```
 
@@ -28,7 +35,7 @@ Scratch互換DSL（唯一の正本）
 
 - DSLの構造、ID、scope、block graph、asset参照を検証する。
 - Stageとoriginal SpriteをRuntimeへ構築し、対応済みopcodeを実行する。
-- keyboard、mouse、Canvas描画、costume、simple soundを利用する。
+- keyboard、mouse、costume、simple soundを利用する。
 - clone、custom procedure、warp、simple pen、variable/list monitor visibilityを扱う。
 - 検証済みDSLをScratch 3形式のproject.jsonへ変換する。
 - project.jsonと参照assetを含むSB3を生成する。
@@ -83,9 +90,6 @@ Phase 7.1でworkspace作品preview/exportフローを追加し、次の既存機
 確認した。
 
 - `motion_movesteps`によるSprite座標更新。
-- pen down時の円形点と、移動時の丸端線分。
-- costumeなしStageの透明描画。
-- cloneによるsource Sprite skinの共有。
 - workspace DSLからのpreviewとSB3 export。
 
 2026年6月22日の確認では`npm test` 179件、

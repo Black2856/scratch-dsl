@@ -8,6 +8,10 @@ export interface AudioPort<TDecoded = unknown, TPlayback = unknown> {
     play(decoded: TDecoded, onEnded: () => void): TPlayback;
     stop(playback: TPlayback): void;
     setVolume(playback: TPlayback, volume: number): void;
+    /** Sets playback pitch in Scratch units (playbackRate = 2 ** (pitch/120)). Optional. */
+    setPitch?(playback: TPlayback, pitch: number): void;
+    /** Sets stereo pan (-100 left .. 100 right). Optional. */
+    setPan?(playback: TPlayback, pan: number): void;
 }
 
 export interface RuntimeSoundPlayback {
@@ -23,6 +27,12 @@ export interface RuntimeSoundPlayback {
 export interface RuntimeAudioPort {
     play(targetId: string, soundId: string): RuntimeSoundPlayback | undefined;
     setTargetVolume(targetId: string, volume: number): void;
+    /**
+     * Applies the target's sound effects (pitch in semitone-cents -360..360,
+     * pan -100..100) to its active and future playback. Optional: a headless
+     * audio port may ignore it.
+     */
+    setTargetEffects?(targetId: string, effects: {pitch: number; pan: number}): void;
     stopTarget(targetId: string): void;
     stopAll(): void;
     /**

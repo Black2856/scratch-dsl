@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TurboWarp/Scratch VM preview</title>
+<style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #15171a; color: #edf0f3; }
+    body { margin: 0; padding: 18px; }
+    header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    h1 { font-size: 17px; margin: 0; }
+    .grow { flex: 1; }
+    button { border: 0; border-radius: 7px; padding: 8px 14px; font-weight: 700; cursor: pointer; }
+    #green { background: #34b66a; color: #081b0f; }
+    #stop { background: #e35d6a; color: #26070a; }
+    #stage-wrap { position: relative; width: 480px; height: 360px; }
+    canvas { display: block; width: 480px; height: 360px; background: #fff; border-radius: 5px; }
+    #monitors { position: absolute; inset: 0; pointer-events: none; }
+    .monitor {
+        position: absolute; background: rgba(0,0,0,.6); color: #fff;
+        font-size: 12px; padding: 2px 6px; border-radius: 4px; white-space: nowrap;
+    }
+    .monitor b { color: #ffd479; font-weight: 600; }
+    #status { font-size: 13px; color: #9ba5b1; }
+    #status[data-state="running"] { color: #62dc8d; }
+    #status[data-state="error"] { color: #ff7b87; }
+    .hint { font-size: 12px; color: #8b94a0; margin-top: 8px; max-width: 480px; }
+</style>
+</head>
+<body>
+<header>
+    <h1 id="title">TurboWarp / Scratch VM preview</h1>
+    <span class="grow"></span>
+    <button id="green" type="button">⚑</button>
+    <button id="stop" type="button">■</button>
+    <span id="status" data-state="loading">loading…</span>
+</header>
+
+<div id="stage-wrap">
+    <canvas id="stage" width="480" height="360" tabindex="0"></canvas>
+    <div id="monitors"></div>
+</div>
+<div class="hint">
+    本物の <code>@scratch/scratch-vm</code> + <code>scratch-render</code> がこの作品の
+    <code>.sb3</code> を実行しています。ステージをクリックして 1〜7 キーで操作。
+    <code>window.vm</code> で状態を参照できます (AI 検証用)。
+</div>
+
+<script src="/vendor/scratch-render.js"></script>
+<script src="/vendor/scratch-svg-renderer.js"></script>
+<script src="/vendor/scratch-storage.js"></script>
+<script src="/vendor/scratch-audio.js"></script>
+<script src="/vendor/scratch-vm.js"></script>
+<script>
+(async () => {
+    const statusEl = document.getElementById('status');
+    const setStatus = (s) => { statusEl.textContent = s; statusEl.dataset.state = s; };
+    const canvas = document.getElementById('stage');
+    const monitorsEl = document.getElementById('monitors');
+    const name = new URLSearchParams(location.search).get('name') || 'manual-verification';
+    document.getElementById('title').textContent = `TurboWarp/Scratch VM — ${name}`;
+
+    // UMD bundles expose the class directly (VM, Render) or as a named export
+    // on an object (ScratchStorage.ScratchStorage; SVG.{SVGRenderer,BitmapAdapter}).
+    const pick = (g, name) => (typeof g === 'function') ? g : (g && (g[name] || g.default)) || g;
+    const VM = pick(window.VirtualMachine, 'VirtualMachine');
+    const Storage = pick(window.ScratchStorage, 'ScratchStorage');
+    const Render = pick(window.ScratchRender, 'ScratchRender');
+    const SVG = window.ScratchSVGRenderer;
+
+    try {
+        const vm = new VM();
+        window.vm = vm;
+        const storage = new Storage();
+        vm.attachStorage(storage);
+
+        // Audio engine so sound blocks (and pitch/pan) actually play.
+        const AudioEngine = pick(window.AudioEngine, 'AudioEngine');
+        if (AudioEngine) vm.attachAudioEngine(new AudioEngine());
+
+        // SVG/bitmap costume adapters (needed for SVG sprites like Abby).
+        if (SVG) {
+            const SVGRenderer = SVG.SVGRenderer;
+            const BitmapAdapter = SVG.BitmapAdapter;
+            if (SVGRenderer) vm.attachV2SVGAdapter(new SVGRenderer());
+            if (BitmapAdapter) vm.attachV2BitmapAdapter(new BitmapAdapter());
+        }
+
+        const renderer = new Render(canvas);
+        vm.attachRenderer(renderer);
+        vm.setTurboMode(false);
+        vm.start();
+
+        // Forward keyboard (document) and mouse (canvas) to the VM.
+        const postKey = (e, isDown) => vm.postIOData('keyboard', {key: e.key, isDown});
+        document.addEventListener('keydown', (e) => postKey(e, true));
+        document.addEventListener('keyup', (e) => postKey(e, false));
+        const postMouse = (e, isDown) => {
+            const rect = canvas.getBoundingClientRect();
+            const data = {x: e.clientX - rect.left, y: e.clientY - rect.top,
+                canvasWidth: rect.width, canvasHeight: rect.height};
+            if (typeof isDown === 'boolean') data.isDown = isDown;
+            vm.postIOData('mouse', data);
+        };
+        canvas.addEventListener('mousemove', (e) => postMouse(e));
+        canvas.addEventListener('mousedown', (e) => { canvas.focus(); postMouse(e, true); });
+        canvas.addEventListener('mouseup', (e) => postMouse(e, false));
+
+        // Monitor overlay (scratch-render does not draw monitors).
+        const renderMonitors = (monitors) => {
+            monitorsEl.replaceChildren();
+            const each = (m) => {
+                const get = (k) => (m && typeof m.get === 'function' ? m.get(k) : m[k]);
+                if (!get('visible')) return;
+                const opcode = get('opcode');
+                const params = get('params');
+                const pget = (k) => (params && typeof params.get === 'function' ? params.get(k) : (params ? params[k] : undefined));
+                const label = pget('VARIABLE') || pget('LIST') || opcode || '';
+                const value = get('value');
+                const div = document.createElement('div');
+                div.className = 'monitor';
+                div.style.left = `${Math.max(0, get('x') || 0)}px`;
+                div.style.top = `${Math.max(0, get('y') || 0)}px`;
+                div.innerHTML = `<b></b> <span></span>`;
+                div.querySelector('b').textContent = String(label);
+                div.querySelector('span').textContent = Array.isArray(value) ? value.join(', ') : String(value);
+                monitorsEl.append(div);
+            };
+            if (monitors && typeof monitors.forEach === 'function') monitors.forEach((m) => each(m));
+            else if (Array.isArray(monitors)) monitors.forEach((m) => each(m));
+        };
+        vm.on('MONITORS_UPDATE', renderMonitors);
+
+        document.getElementById('green').addEventListener('click', () => { canvas.focus(); vm.greenFlag(); });
+        document.getElementById('stop').addEventListener('click', () => vm.stopAll());
+
+        setStatus('loading project…');
+        const buffer = await (await fetch(`/project/${encodeURIComponent(name)}.sb3`)).arrayBuffer();
+        await vm.loadProject(buffer);
+        vm.greenFlag();
+        canvas.focus();
+        window.__twReady = true;
+        setStatus('running');
+    } catch (error) {
+        setStatus('error');
+        const div = document.createElement('pre');
+        div.style.color = '#ff7b87';
+        div.style.whiteSpace = 'pre-wrap';
+        div.textContent = String(error && error.stack || error);
+        document.body.append(div);
+        window.__twError = String(error && error.message || error);
+    }
+})();
+</script>
+</body>
+</html>

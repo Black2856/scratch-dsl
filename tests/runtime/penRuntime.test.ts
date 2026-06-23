@@ -5,7 +5,7 @@ import {createPenProject, createBareSpriteProject} from '../fixtures/phase5Proje
 import {createProject} from '../../src/model/ProjectFactory.ts';
 import {Runtime} from '../../src/runtime/Runtime.ts';
 import {PEN_DEFAULT_COLOR, PEN_DEFAULT_SIZE} from '../../src/runtime/PenManager.ts';
-import type {DrawableState, PenAttributes, PenPoint, RendererPort} from '../../src/render/RendererPort.ts';
+import type {DrawableState, PenAttributes, PenPoint, RendererPort} from '../../src/runtime/RendererPort.ts';
 
 /** RendererPort capturing every pen port call. */
 class PenRecorder implements RendererPort {

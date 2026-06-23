@@ -62,6 +62,10 @@ export class SoundManager<TDecoded = unknown, TPlayback = unknown> {
         this.getBank(targetId).setVolume(volume);
     }
 
+    setTargetEffects(targetId: string, effects: {pitch: number; pan: number}): void {
+        this.getBank(targetId).setEffects(effects.pitch, effects.pan);
+    }
+
     stopTarget(targetId: string): void {
         this.banks.get(targetId)?.stopAll();
     }

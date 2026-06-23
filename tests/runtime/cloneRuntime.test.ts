@@ -6,7 +6,7 @@ import {createProject} from '../../src/model/ProjectFactory.ts';
 import {Runtime} from '../../src/runtime/Runtime.ts';
 import {Clone} from '../../src/model/Clone.ts';
 import {PEN_DEFAULT_COLOR} from '../../src/runtime/PenManager.ts';
-import type {DrawableState, RendererPort} from '../../src/render/RendererPort.ts';
+import type {DrawableState, RendererPort} from '../../src/runtime/RendererPort.ts';
 import type {RuntimeAudioPort, RuntimeSoundPlayback} from '../../src/audio/AudioPort.ts';
 
 /** RendererPort that records pen/release calls and the last drawable snapshot. */

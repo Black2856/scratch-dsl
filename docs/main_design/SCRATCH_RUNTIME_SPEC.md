@@ -2,7 +2,7 @@
 
 ## 公式構造から採用する責務
 
-公式 `Runtime` はtargets、threads、sequencer、renderer、audio engine、I/O device、monitor state、extension primitivesを統括し、`startHats` と `greenFlag` を提供する。本実装も同じ境界を採用するが、初期描画はCanvas 2Dとする。
+公式 `Runtime` はtargets、threads、sequencer、renderer、audio engine、I/O device、monitor state、extension primitivesを統括し、`startHats` と `greenFlag` を提供する。本実装も同じ境界を採用する。視覚出力は実Scratch VM（`scratch-render`）が担い、本Runtimeは `RendererPort` をseamとして保持する。
 
 ## lifecycle
 
@@ -11,9 +11,9 @@
 | load | DSL検証、asset解決、Stage先頭でtargets構築、block index構築 |
 | start | clock/input/audioを開始しschedulerを起動 |
 | greenFlag | 既存実行を停止・状態を整え、`event_whenflagclicked` hatsを起動 |
-| tick | input snapshot取得、threads実行、monitor更新、render |
+| tick | input snapshot取得、threads実行、monitor更新 |
 | stopAll | 全thread停止、音停止、質問/UI待機解除 |
-| dispose | targets、skins、audio nodes、listenersを解放 |
+| dispose | targets、audio nodes、listenersを解放 |
 
 ## opcode実行契約
 
@@ -23,7 +23,7 @@ primitiveは `(args, util)` 相当で呼び出す。`util` はtarget、thread、
 
 位置を変えるmotion block（`motion_movesteps`、`motion_gotoxy`、`motion_setx`、`motion_sety`、`motion_changexby`、`motion_changeyby`、将来のglide）は、公式VMの `RenderedTarget.setXY` 同様に `util.setXY(x, y)` を通る。`setXY` は次のように動く。
 
-- rendererが接続され `getFencedPosition` を持つ場合、保存前にfenced座標へ補正する（公式の `if (this.renderer)` 相当、fencing仕様はSCRATCH_RENDER_SPEC参照）。
+- rendererが接続され `getFencedPosition` を持つ場合、保存前にfenced座標へ補正する（公式の `if (this.renderer)` 相当）。
 - **headless（rendererなし）では補正せず生の座標を保存する**。これは公式VMと同じ振る舞いだが、結果としてheadless実行とrendererあり実行で最終座標が一致しない場合がある（例: 「x座標を300にする」はheadlessで300、rendererありで261付近）。headless unit testはこの素通しを前提に期待値を置く。
 - `motion_movesteps` のpen segmentはfencing後の着地点までを描く。
 - `motion_xposition`/`motion_yposition` reporterはfencing後の `target.x`/`target.y` を返す。

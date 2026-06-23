@@ -3,10 +3,15 @@ import type {Sprite} from '../model/Sprite.ts';
 import type {Runtime} from './Runtime.ts';
 import {Thread} from './Thread.ts';
 
-/** Optional match constraints for startHats: broadcast id (receive hats) or key name (when-key-pressed hats). */
+/**
+ * Optional match constraints for startHats: broadcast id (receive hats), key
+ * name (when-key-pressed hats), or backdrop name (when-backdrop-switches-to
+ * hats).
+ */
 export interface HatMatch {
     broadcastId?: string;
     keyOption?: string;
+    backdrop?: string;
 }
 
 const hatMatches = (
@@ -23,6 +28,10 @@ const hatMatches = (
         // 'any' hat fires for every key, mirroring the official VM.
         const option = block.fields.KEY_OPTION?.value;
         return option === match.keyOption || option === 'any';
+    }
+    if (match.backdrop !== undefined) {
+        // when-backdrop-switches-to hats match on the BACKDROP field's name.
+        return block.fields.BACKDROP?.value === match.backdrop;
     }
     return true;
 };

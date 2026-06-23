@@ -39,7 +39,7 @@ export class Sprite extends Target {
     y: number;
     size: number;
     direction: number;
-    readonly draggable: boolean;
+    draggable: boolean;
     rotationStyle: RotationStyle;
 
     constructor(options: SpriteOptions) {
@@ -83,5 +83,14 @@ export class Sprite extends Target {
 
     setRotationStyle(style: RotationStyle): void {
         this.rotationStyle = style;
+    }
+
+    /**
+     * Sets the drag mode (`sensing_setdragmode`). Mutable per official VM
+     * (`RenderedTarget.setDraggable`); clones copy the source's value at
+     * creation and then diverge independently.
+     */
+    setDraggable(draggable: boolean): void {
+        this.draggable = draggable;
     }
 }
