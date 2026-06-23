@@ -127,30 +127,35 @@ npm run sb3 -- full-feature-minimal        # export 側の非回帰（import は
 ゲート達成：自前 export の `project.json` 往復一致、未知 opcode/field/mutation の無損失、
 `importSb3` による実プロジェクトの構造ロード。`[tag, null]` 空スロットも空入力として扱う。
 
-## 10. Phase 9 へ繰り越し：実プロジェクト互換（FNF 実測根拠）
+## 10. 実プロジェクト互換：達成（FNF 実測）
 
-実プロジェクト `[☁leaderboard] Friday Night Funkin v1.0.sb3`（89.7 MiB）を `npm run import`
-で検証した結果：**import パイプラインは 16 targets / 25,286 blocks / 857 assets / pen を
-約 0.5 秒で組み立て成功**。import 側の取りこぼしは 0。
+実プロジェクト `[☁leaderboard] Friday Night Funkin v1.0.sb3`（89.7 MiB）で検証:
+**import パイプラインは 16 targets / 25,286 blocks / 857 assets / pen を約 0.5 秒で組み立て、
+`validateProject` を 0 error で通過**。さらに **import → export → re-import が成立**（再 export
+94.6 MiB、再 import も 0 error、25,286 blocks 保存）。
 
-一方 `validateProject`（DSL モデルは意図的に Scratch 全体より狭い）は 1165 errors を返す。
-これは import のバグではなく、互換範囲を広げる Phase 9 タスクの根拠：
+当初 1165 error が出たが、いずれも import バグではなく「DSL 検証が Scratch の受理範囲より厳しい」
+ものだった。Scratch に合わせて緩和して解消:
 
-| 件数 | コード | 内容 |
+| 件数 | コード | 解消方法 |
 |---|---|---|
-| 710 | `id.invalid` | 実 Scratch の変数/list id が DSL の id 文字種・長さ規則より広い（最優先）|
-| 254 | `procedure.definition-missing` | カスタムブロックの定義照合 |
-| 75 | `id.duplicate` | Scratch が許す id 再利用 |
-| 64 | `comment.block-dangling` | コメント参照 |
-| 37 | `procedure.invalid-arguments` | 手続き引数 |
-| 25 | `block.next-not-allowed` / `script.root-invalid` | グラフ形状規則 |
-| 10 | `sb3.variable.cloud-unsupported` | cloud 変数は DSL で表現不可 |
+| 710 | `id.invalid` | id 文字種・長さ規則を緩和（生成は soup のまま、検証は任意非空文字列）|
+| 291 | `procedure.*` | prototype は argumentids↔names parity のみ要求、argumentdefaults 長不一致を許容 |
+| 75 | `id.duplicate` | id を Scratch 同様に target スコープ化（複製スプライトの local id 再利用を許容）|
+| 64 | `comment.block-dangling` | 未解決コメント（cross-target/孤立）は保持して warning に降格 |
+| 20 | `block.next-not-allowed` | `control_stop` の "other scripts" 変種は next 可 |
+| 5 | `script.root-invalid/unlisted` | standalone な topLevel shadow を script root から除外 |
 
 warning の `opcode.input-unknown`（2152）は metadata が Phase 7.2 範囲のため（ロード阻害せず）。
 
-これらの厳格 DSL 検証を実プロジェクトで通す互換拡張は **Phase 9** で扱う（`id.invalid` の
-緩和だけで 1165 中 710 を解消）。Phase 8 本体（自前往復 + opaque 保持）はこの繰り越しと独立に
-完成しており、既存機能はこの未対応に依存しない。
+切り分けの実測: comment-dangling 64 = cross-target 参照 44 + 孤立 20（同一 target に解決する 44 は
+正しく再構築済み = import 取りこぼし 0）。procedure の根因は argumentdefaults の長さ過剰で、
+argumentids===argumentnames は常に一致（import は忠実）。
 
-残課題：G3（外部 corpus のライセンス/保管）は未判断のままで、自前 export の self round-trip を
-一次 corpus とする。target/project レベルの未知フィールドと meta の再 export 保持も Phase 9 候補。
+### Phase 9 に残す真のモデル差（互換ではなく DSL 表現の限界）
+- **cloud 変数**: `DslVariable.isCloud` は `false` 固定。`☁` 変数は通常変数として import され
+  （warning `sb3.variable.cloud-unsupported`）、再 export で cloud 属性は失われる。
+- **meta**: export は固定 META を書くため、元 `meta`（vm/agent 等）は再現しない。
+- **opcode metadata 網羅**: 未対応 opcode の入力は `opcode.input-unknown`（warning）。実行はしないが
+  情報は保持。metadata 拡充は Phase 9 候補。
+- target/project レベルの未知フィールドの再 export 保持、G3（外部 corpus のライセンス/保管）も Phase 9。
