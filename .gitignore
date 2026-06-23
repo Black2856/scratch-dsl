@@ -15,3 +15,6 @@ node_modules/
 
 # Local fixture and test assets (kept on disk, not committed)
 /workspace/
+
+# Real-world .sb3 files dropped at the repo root for import checks (large, not source)
+/*.sb3
