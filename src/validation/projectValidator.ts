@@ -130,6 +130,29 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const hasKeys = (value: Record<string, unknown>, keys: string[]): boolean =>
     keys.every(key => Object.prototype.hasOwnProperty.call(value, key));
 
+/** Emits a `schema.required` diagnostic for each missing key. */
+const requireKeys = (
+    value: Record<string, unknown>,
+    keys: string[],
+    pathPrefix: string,
+    diagnostics: Diagnostic[],
+    label: string,
+    entityId: string | null = null,
+    opcode: string | null = null
+): void => {
+    for (const key of keys) {
+        if (!Object.prototype.hasOwnProperty.call(value, key)) {
+            diagnostics.push(makeDiagnostic(
+                'schema.required',
+                `${pathPrefix}.${key}`,
+                `Required ${label} ${key} is missing.`,
+                entityId,
+                opcode
+            ));
+        }
+    }
+};
+
 const validateRecordArray = (
     value: unknown,
     path: string,
@@ -166,11 +189,7 @@ const validateShape = (value: unknown): Diagnostic[] => {
         return [makeDiagnostic('schema.root-type', '$', 'Project DSL must be an object.')];
     }
     const required = ['schemaVersion', 'project', 'stage', 'sprites', 'assets', 'monitors', 'extensions', 'meta'];
-    for (const key of required) {
-        if (!Object.prototype.hasOwnProperty.call(value, key)) {
-            diagnostics.push(makeDiagnostic('schema.required', `$.${key}`, `Required property ${key} is missing.`));
-        }
-    }
+    requireKeys(value, required, '$', diagnostics, 'property');
     if (value.schemaVersion !== CURRENT_SCHEMA_VERSION) {
         diagnostics.push(makeDiagnostic(
             'schema.version-unsupported',
@@ -208,38 +227,21 @@ const validateTargetShape = (target: unknown, path: string, expectedStage: boole
     if (!isRecord(target)) {
         return [makeDiagnostic('schema.target', path, 'Target must be an object.')];
     }
+    const targetId = typeof target.id === 'string' ? target.id : null;
     const required = [
         'id', 'isStage', 'name', 'variables', 'lists', 'broadcasts', 'blocks', 'scripts',
         'comments', 'currentCostume', 'costumes', 'sounds', 'volume', 'layerOrder'
     ];
     const stageRequired = ['tempo', 'videoTransparency', 'videoState', 'textToSpeechLanguage'];
     const spriteRequired = ['visible', 'x', 'y', 'size', 'direction', 'draggable', 'rotationStyle'];
-    for (const key of required) {
-        if (!Object.prototype.hasOwnProperty.call(target, key)) {
-            diagnostics.push(makeDiagnostic(
-                'schema.required',
-                `${path}.${key}`,
-                `Required target property ${key} is missing.`,
-                typeof target.id === 'string' ? target.id : null
-            ));
-        }
-    }
-    for (const key of expectedStage ? stageRequired : spriteRequired) {
-        if (!Object.prototype.hasOwnProperty.call(target, key)) {
-            diagnostics.push(makeDiagnostic(
-                'schema.required',
-                `${path}.${key}`,
-                `Required target property ${key} is missing.`,
-                typeof target.id === 'string' ? target.id : null
-            ));
-        }
-    }
+    requireKeys(target, [...required, ...(expectedStage ? stageRequired : spriteRequired)],
+        path, diagnostics, 'target property', targetId);
     if (typeof target.id !== 'string' || typeof target.name !== 'string') {
         diagnostics.push(makeDiagnostic(
             'schema.target-types',
             path,
             'Target id and name must be strings.',
-            typeof target.id === 'string' ? target.id : null
+            targetId
         ));
     }
     if (target.isStage !== expectedStage) {
@@ -247,7 +249,7 @@ const validateTargetShape = (target: unknown, path: string, expectedStage: boole
             'target.stage-flag',
             `${path}.isStage`,
             `Expected isStage=${expectedStage}.`,
-            typeof target.id === 'string' ? target.id : null
+            targetId
         ));
     }
     for (const key of ['variables', 'lists', 'broadcasts', 'scripts', 'comments', 'costumes', 'sounds']) {
@@ -256,7 +258,7 @@ const validateTargetShape = (target: unknown, path: string, expectedStage: boole
                 'schema.array',
                 `${path}.${key}`,
                 `${key} must be an array.`,
-                typeof target.id === 'string' ? target.id : null
+                targetId
             ));
         }
     }
@@ -265,7 +267,7 @@ const validateTargetShape = (target: unknown, path: string, expectedStage: boole
             'schema.blocks',
             `${path}.blocks`,
             'blocks must be an object dictionary.',
-            typeof target.id === 'string' ? target.id : null
+            targetId
         ));
     } else {
         for (const [blockId, rawBlock] of Object.entries(target.blocks)) {
@@ -277,17 +279,9 @@ const validateTargetShape = (target: unknown, path: string, expectedStage: boole
             const blockRequired = [
                 'id', 'opcode', 'next', 'parent', 'inputs', 'fields', 'shadow', 'topLevel'
             ];
-            for (const key of blockRequired) {
-                if (!Object.prototype.hasOwnProperty.call(rawBlock, key)) {
-                    diagnostics.push(makeDiagnostic(
-                        'schema.required',
-                        `${blockPath}.${key}`,
-                        `Required block property ${key} is missing.`,
-                        typeof rawBlock.id === 'string' ? rawBlock.id : blockId,
-                        typeof rawBlock.opcode === 'string' ? rawBlock.opcode : null
-                    ));
-                }
-            }
+            requireKeys(rawBlock, blockRequired, blockPath, diagnostics, 'block property',
+                typeof rawBlock.id === 'string' ? rawBlock.id : blockId,
+                typeof rawBlock.opcode === 'string' ? rawBlock.opcode : null);
             if (
                 typeof rawBlock.id !== 'string' ||
                 typeof rawBlock.opcode !== 'string' ||
