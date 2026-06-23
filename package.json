@@ -1,6 +1,6 @@
 {
   "name": "scratch-dsl",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "段階的 Scratch 3.0 互換 DSL 基盤 (pseudo Runtime / Editor / Asset / .sb3)",
