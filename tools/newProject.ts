@@ -9,9 +9,11 @@ import {
 /**
  * Scaffolds a new workspace project under `workspace/<name>/` with a minimal,
  * already-valid DSL (`project.ts`), an empty asset manifest (`assets.json`),
- * and the `output/` directory used by `npm run sb3`. The generated project
- * passes validateProject and runs in preview immediately (green flag → move),
- * so the author edits a working skeleton instead of building structure by hand.
+ * an empty `src/` for splitting large works (project.ts stays the composing
+ * main; per-sprite/feature modules go in `src/`), and the `output/` directory
+ * used by `npm run sb3`. The generated project passes validateProject and runs
+ * in preview immediately (green flag → move), so the author edits a working
+ * skeleton instead of building structure by hand.
  */
 
 const projectFileTemplate = (name: string): string => `import type {DslProject} from '../../src/validation/projectValidator.ts';
@@ -137,11 +139,13 @@ if (!projectName) {
         } else {
             await mkdir(path.join(directory, 'output'), {recursive: true});
             await mkdir(path.join(directory, 'assets'), {recursive: true});
+            await mkdir(path.join(directory, 'src'), {recursive: true});
             await writeFile(path.join(directory, 'project.ts'), projectFileTemplate(projectName));
             await writeFile(path.join(directory, 'assets.json'), manifestTemplate());
 
             console.log(`Created workspace project: ${directory}`);
             console.log(`  project.ts   minimal valid DSL (green flag -> move 10)`);
+            console.log(`  src/         split big works here (project.ts stays the main)`);
             console.log(`  assets.json  empty manifest`);
             console.log(`  assets/      put costume/sound files here`);
             console.log(`  output/      sb3 output directory`);

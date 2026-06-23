@@ -34,7 +34,7 @@ Do not implement a later phase unless explicitly requested.
 
 - At task start, inspect `workspace/` and confirm the actual repository root before editing.
 - Local Scratch works live under `workspace/<name>/`, one directory per work directly inside `workspace/`; keep their `project.ts`, `assets.json`, per-work `assets/`, and generated `output/` there.
-- Scaffold new works with `npm run new -- <name>`; it creates `workspace/<name>/` with a minimal valid `project.ts`, an empty `assets.json`, an empty `assets/`, and `output/`, and refuses to overwrite an existing directory.
+- Scaffold new works with `npm run new -- <name>`; it creates `workspace/<name>/` with a minimal valid `project.ts`, an empty `assets.json`, an empty `assets/`, an empty `src/` (split large works here — `project.ts` stays the composing main), and `output/`, and refuses to overwrite an existing directory.
 - Asset `source` paths in both `assets.json` and the DSL are repository-root-relative (e.g. `workspace/<name>/assets/sprite/foo.png`), matching `meta.source`; `loadWorkspaceProject` resolves them from the repository root.
 - Use the same validated `project.ts` DSL for both `npm run preview -- <name>` (real Scratch VM + renderer) and `npm run sb3 -- <name>`.
 - Keep reusable preview/CLI mechanisms in `preview/`, `tools/`, and `src/`; do not move common Runtime/SB3 code into a workspace project.
