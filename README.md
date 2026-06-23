@@ -96,6 +96,24 @@ npm run sb3 -- <name>
 可変状態からではなく、検証済みDSLからのみ生成します。生成された `project.json` や
 ZIPは編集せず、変更はDSLを編集して再生成します。
 
+## .sb3 を読み込む（import / Phase 8）
+
+```powershell
+npm run import -- <file.sb3> [--strict]
+```
+
+既存の `.sb3`（実Scratch/TurboWarpが保存したものを含む）を読み込み、`DslProject`
+へ変換して読み込み結果の要約（target/block/asset数、extension、診断内訳）を表示します。
+出力（export）の逆方向の経路で、ファイルは書き換えません。
+
+- ZIP展開はDEFLATE対応で、entry数・サイズ上限、path traversal、CRC不一致などを拒否します。
+- compact primitive・input descriptor・mutation・未知opcode・未知フィールドを復元/保持し、
+  自前 export の往復では `project.json` が一致します。
+- `--strict` は保持可能な不整合もerror扱い、既定の `compatibility` はwarningで継続します。
+- DSLモデルはScratch全体より狭いため（id文字種、Phase 7.2範囲のopcode metadata、cloud変数
+  など）、大型の実プロジェクトは構造としては読み込めても、厳密なDSL検証では差分が出る場合が
+  あります。診断はその差分を機械可読に列挙します。
+
 ## 新しい作品を追加する手順
 
 1. `npm run new -- <name>` で雛形生成（手動なら同じ構成を用意）。
@@ -150,9 +168,10 @@ src/
   input/        InputPort
   sb3/          sb3Packager（.sb3生成）, serializer, extension/asset collector
   assets/       AssetManager / MD5 / validation
+  sb3/import/   SB3 import（inflate/unzipSafe/parse/rawToDsl/importProject）
 preview/turbowarp/  実Scratch VM + scratch-render を読むプレイヤーページ
 tools/          turbowarpPreview.ts（previewサーバ）, turbowarpShot.ts（screenshot+状態）,
-                exportSb3.ts, workspaceProject.ts, newProject.ts
+                exportSb3.ts, importSb3.ts, workspaceProject.ts, newProject.ts
 schemas/        project.schema.json
 tests/          ユニットテスト（node:test）, fixtures/, smoke/（実VM Playwright）
 docs/           設計ドキュメント（main_design/ が中心）
@@ -190,5 +209,7 @@ node --experimental-strip-types --check src/validation/projectValidator.ts
 
 - Phase 0〜7.2 まで実装済み（検証・model・Runtime・asset/audio・clone/procedure/pen/
   monitor・DSL→SB3、Phase 7.2 の互換opcode拡張）。
-- Phase 8（既存SB3 import）以降は未実装。
-- 詳細は `AGENTS.md` と `docs/NEXT_PHASE_ROADMAP(7~9).md`。
+- Phase 8（既存SB3 import）: import パイプライン実装済み（`npm run import`、`src/sb3/import/`）。
+  自前 export の往復一致と未知情報の opaque 保持まで対応。実プロジェクトの厳密DSL検証を通す
+  完全互換（id文字種・全opcode metadata 等）は Phase 9 の互換性拡張で扱う。
+- 詳細は `AGENTS.md` と `docs/NEXT_PHASE_ROADMAP(7~9).md`、`docs/main_design/SB3_IMPORT_*`。
