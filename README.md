@@ -216,7 +216,9 @@ node --experimental-strip-types --check src/validation/projectValidator.ts
 
 - Phase 0〜7.2 まで実装済み（検証・model・Runtime・asset/audio・clone/procedure/pen/
   monitor・DSL→SB3、Phase 7.2 の互換opcode拡張）。
-- Phase 8（既存SB3 import）: import パイプライン実装済み（`npm run import`、`src/sb3/import/`）。
-  自前 export の往復一致と未知情報の opaque 保持まで対応。実プロジェクトの厳密DSL検証を通す
-  完全互換（id文字種・全opcode metadata 等）は Phase 9 の互換性拡張で扱う。
+- Phase 8（既存SB3 import・round-trip）実装済み（`npm run import`、`src/sb3/import/`）。
+  実プロジェクト（FNF 89.7MiB）が 0 検証エラーでロードし、import → export → re-import が成立。
+  `--out` で editable workspace 作品を生成可。
+- Phase 9（未実装）: cloud変数のDSL表現、project meta の再export保持、opcode metadata の網羅
+  （`opcode.input-unknown` 警告の解消）など選択的な互換性強化。
 - 詳細は `AGENTS.md` と `docs/NEXT_PHASE_ROADMAP(7~9).md`、`docs/main_design/SB3_IMPORT_*`。
