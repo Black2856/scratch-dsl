@@ -1,9 +1,32 @@
-# 作品オーサリング・リファレンス（vibe coding 用）
+# 作品オーサリング・プロンプト（vibe coding 用）
 
-このツールで Scratch 作品を「DSL（`project.ts`）として書く」ときの実務リファレンス。
-正本は `workspace/<name>/project.ts` の DSL で、そこから `npm run preview`（実Scratch VMで
-実行）と `npm run sb3`（`.sb3` 出力）を行う。使えるブロックの正本は
-`src/blocks/opcodeMetadata.ts`。**未登録の opcode は使わない**（validator が弾く / 実装が無い）。
+> **このファイルは vibe coding で作品をつくるとき AI に読み込ませるプロンプトである。**
+> 以下の規約に従って `workspace/<name>/` の Scratch 作品を実装・編集すること。
+
+## あなたのタスク
+
+ユーザーが望む Scratch 作品を、このツールの **DSL** として
+`workspace/<name>/project.ts`（大きければ `workspace/<name>/src/` に分割）へ実装し、
+`npm run sb3 -- <name>`（形式検証）と `npm run preview -- <name>`（実Scratch VMで実行）で
+確認できる状態にする。
+
+## 絶対に守る規約
+
+1. **正本は DSL**。`project.ts` の `DslProject` だけが正本。生成された `project.json` / `.sb3` /
+   Runtime 状態を編集・入力にしない。変更は DSL を直して再生成する。
+2. **登録済み opcode だけ**を使う（正本 `src/blocks/opcodeMetadata.ts`）。未登録 opcode・推測の
+   opcode・silent no-op を使わない。迷ったら `getOpcodeMetadata('<opcode>')` で input/field/shadow/
+   shape/target を確認する（§5）。
+3. **大きい作品は分割する**。`project.ts` は組み立てと `default export` の main に保ち、
+   スプライト/機能ごとに `workspace/<name>/src/` のモジュールへ分けて import する（§2）。
+4. **ブロックグラフは §4 のビルダーで生成する**（手書きの `parent/next/shadow/id` は事故るため）。
+5. **id はプロジェクト全体で一意**、作品名は英数字始まり、shadow / broadcast / asset のルール（§8）を守る。
+6. 完成の定義: `npm run sb3 -- <name>` が `scratch-parser: pass`、かつ意図した挙動が
+   `npm run preview` / `npm run shot` で確認できること。
+
+このツールは実Scratch VM（`@scratch/scratch-vm` + `scratch-render`）で `.sb3` を実行して
+視覚・音・挙動を確認する。本リポジトリに自作レンダラは無い（DSL→検証→SB3 が責務）。
+使えるブロックの正本は `src/blocks/opcodeMetadata.ts`。
 
 ---
 
