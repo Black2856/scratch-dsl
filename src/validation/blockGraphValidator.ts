@@ -38,6 +38,12 @@ export interface DslBlock {
     y?: number;
     mutation?: Record<string, unknown>;
     comment?: string;
+    /**
+     * Unknown SB3 block fields preserved verbatim by import (Phase 8) so they
+     * can be re-emitted on export. Not interpreted by validation or Runtime;
+     * the serializer merges these back into the block.
+     */
+    opaque?: Record<string, unknown>;
 }
 
 export interface ValidationScope {

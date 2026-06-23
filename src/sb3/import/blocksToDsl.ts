@@ -24,6 +24,11 @@ export interface BlockGraph {
 const isObject = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null && !Array.isArray(value);
 
+// SB3 block keys the DSL models explicitly; anything else is kept opaquely.
+const KNOWN_BLOCK_KEYS = new Set([
+    'opcode', 'next', 'parent', 'inputs', 'fields', 'shadow', 'topLevel', 'x', 'y', 'mutation', 'comment'
+]);
+
 const stringOrNull = (value: unknown): string | null => (typeof value === 'string' ? value : null);
 
 /** Converts an SB3 field (`[value]` or `[value, id]`) to a DSL field. */
@@ -123,6 +128,12 @@ export const rawBlocksToDsl = (
         }
 
         if (typeof rawValue.comment === 'string') block.comment = rawValue.comment;
+
+        const opaque: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(rawValue)) {
+            if (!KNOWN_BLOCK_KEYS.has(key)) opaque[key] = value;
+        }
+        if (Object.keys(opaque).length > 0) block.opaque = opaque;
 
         out[blockId] = block;
     }

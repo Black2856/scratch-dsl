@@ -272,6 +272,10 @@
         },
         "comment": {
           "$ref": "#/$defs/id"
+        },
+        "opaque": {
+          "type": "object",
+          "additionalProperties": true
         }
       }
     },
