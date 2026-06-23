@@ -37,7 +37,7 @@ const writeWorkspaceProject = async (
 };
 
 test('loads and validates an asset-free workspace project', async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), 'htmljs2sb3-workspace-'));
+    const root = await mkdtemp(path.join(os.tmpdir(), 'scratch-dsl-workspace-'));
     try {
         const project = createMinimalProject();
         project.project = {id: 'local-project', name: 'Local project'};
@@ -53,7 +53,7 @@ test('loads and validates an asset-free workspace project', async () => {
 });
 
 test('rejects workspace asset bytes whose MD5 differs from assetId', async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), 'htmljs2sb3-workspace-'));
+    const root = await mkdtemp(path.join(os.tmpdir(), 'scratch-dsl-workspace-'));
     try {
         const expectedBytes = new TextEncoder().encode('expected');
         const actualBytes = new TextEncoder().encode('different');

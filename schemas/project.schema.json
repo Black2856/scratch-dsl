@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.invalid/htmlJs2sb3/project.schema.json",
+  "$id": "https://example.invalid/scratch-dsl/project.schema.json",
   "title": "Scratch-compatible intermediate project DSL",
   "type": "object",
   "additionalProperties": false,
