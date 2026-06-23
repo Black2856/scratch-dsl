@@ -20,6 +20,9 @@ DSL (project.ts)
 
 DSL（`project.ts`）を書き、`.sb3` を出力して、本物のScratchで実行確認する、という流れです。
 
+> 作品オーサリングの実務リファレンス（DSLの形、ブロック生成ビルダー、大きい作品の
+> コード分割方針、opcode一覧、落とし穴）は **[`VIBE_CODING_REFERENCE.md`](./VIBE_CODING_REFERENCE.md)** を参照。
+
 ## クイックスタート
 
 ```powershell
