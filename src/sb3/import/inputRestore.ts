@@ -20,6 +20,9 @@ export interface InputRestoreContext {
 const resolveValue = (value: unknown, slot: 'shadow' | 'reporter', ctx: InputRestoreContext): string | null => {
     if (typeof value === 'string') return value;
     if (Array.isArray(value)) return ctx.expand(value, slot);
+    // Scratch encodes an empty slot as `[tag, null]` (e.g. an unfilled boolean
+    // or custom-argument input). That is a valid empty input, not an error.
+    if (value === null || value === undefined) return null;
     ctx.onIssue?.('sb3.input.value-invalid', `Input value is neither a block id nor a primitive (${JSON.stringify(value)}).`);
     return null;
 };

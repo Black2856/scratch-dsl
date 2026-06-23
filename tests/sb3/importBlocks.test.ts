@@ -102,6 +102,15 @@ test('restoreInput reports malformed/unknown descriptors', () => {
     assert.deepEqual(log, ['sb3.input.descriptor-invalid', 'sb3.input.descriptor-unknown', 'sb3.input.value-invalid']);
 });
 
+test('restoreInput treats [tag, null] as an empty slot without issues', () => {
+    const log: string[] = [];
+    const ctx = {expand: () => 'X', onIssue: (code: string) => log.push(code)};
+    assert.deepEqual(restoreInput([1, null], ctx), {block: null, shadow: null});
+    assert.deepEqual(restoreInput([2, null], ctx), {block: null, shadow: null});
+    assert.deepEqual(restoreInput([3, 'b', null], ctx), {block: 'b', shadow: null});
+    assert.deepEqual(log, []);
+});
+
 // --- mutation parse ---------------------------------------------------------
 
 test('parseMutation restores argument arrays and warp boolean', () => {
