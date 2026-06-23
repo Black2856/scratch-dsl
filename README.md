@@ -1,4 +1,4 @@
-# htmlJs2sb3
+# scratch-dsl
 
 Scratch互換のDSL（`project.ts`）を正本に、検証して `.sb3` を出力し、その `.sb3` を
 **本物のScratch VM + renderer**（`@scratch/scratch-vm` + `scratch-render`）で実行・確認
