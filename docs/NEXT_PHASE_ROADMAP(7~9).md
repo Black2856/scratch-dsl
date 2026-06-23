@@ -43,7 +43,7 @@ AssetManager、SoundManager、serializer、preview、CLIは本体側へ置く。
 
 ```text
 workspace/<name>/project.ts
-  ├─ validate → manual preview → Runtime/Web Audio（視覚出力は実Scratch VM）
+  ├─ validate → 実Scratch VM + scratch-render（視覚・音声・collisionの確認）
   └─ validate → serializer/packager → output/<name>.sb3 → scratch-parser
 ```
 
@@ -55,10 +55,11 @@ npm run preview -- <name>
 npm run sb3 -- <name>
 ```
 
-manual previewはEditor shellではない。既存機構を接続してCanvas、緑の旗、
-Stop、継続tick、audio gesture、thread/clone/asset/audio状態、diagnosticsを
-確認する開発用プレイヤーである。SB3は常に`project.ts`のDSLから生成し、
-Runtime snapshotや生成済み`project.json`を入力にしない。
+previewはEditor shellではない。`.sb3`をオンデマンド生成し、実Scratch VM +
+scratch-renderを読むプレイヤーで実行する開発用ツールである（緑の旗、Stop、
+キーボード/マウス入力をVMへ渡す）。自作Canvas rendererは持たず、視覚・音声・
+collisionはすべて実VMが担う。SB3は常に`project.ts`のDSLから生成し、Runtime
+snapshotや生成済み`project.json`を入力にしない。
 
 ### Phase 7.2: manual verification向けScratch互換ブロック拡張
 
@@ -138,5 +139,7 @@ Phase 6 export基盤
 ## 現在の成果物境界
 
 Phase 7 fixture、template、workspace preview/exportフローは実装済みである。
-Phase 7.2は設計済みで実装前。Scratch/TurboWarpの確認は手動記録として扱う。
+Phase 7.2（46項目のScratch互換ブロックとその依存）も実装済みで、視覚・音声・
+collisionの確認は実Scratch VM（`npm run preview` / `npm run shot`）で行う。
+Scratch/TurboWarpの確認は手動記録として扱う。
 Phase 8 importとPhase 9互換性強化は未実装であり、別タスクまで着手しない。
