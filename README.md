@@ -27,15 +27,21 @@ DSL（`project.ts`）を書き、`.sb3` を出力して、本物のScratchで実
 ## クイックスタート
 
 ```powershell
+npm install                      # clone直後に1回だけ（依存を取得）
 npm run new -- my-project        # 雛形を workspace/my-project/ に作成
 # workspace/my-project/project.ts を編集（素材は assets/ + assets.json）
-npm run preview -- my-project    # 実Scratch VMで実行（初回は依存を自動install）
+npm run preview -- my-project    # 実Scratch VMで実行
 npm run sb3 -- my-project        # .sb3 を出力（scratch-parser検証つき）
 ```
 
-`npm run preview` の1コマンドだけで、初回は必要な依存（`@scratch/scratch-vm` +
-`scratch-render` ほか）が未取得なら自動で `npm install` し、`.sb3` を生成して、
-ローカルで本物のScratch VM + rendererを起動しブラウザを開きます。
+> **新規cloneした直後は必ず `npm install` を1回実行する。** これを省くと
+> `Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'esbuild'` で停止する
+> （preview/shot/sb3 などのツールが `esbuild` を静的importしているため）。
+
+`npm install` 済みであれば、`npm run preview` の1コマンドで `.sb3` を生成し、
+ローカルで本物のScratch VM + rendererを起動してブラウザを開きます。scratch-vm /
+scratch-render など一部の実行時依存が後から欠けた場合は preview が自動で
+`npm install` を補います（`--update` で再install）。
 
 ## ワークスペース構成
 
