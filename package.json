@@ -8,6 +8,7 @@
     "test": "node --no-warnings --experimental-strip-types --test tests/validation/*.test.ts tests/model/*.test.ts tests/runtime/*.test.ts tests/input/*.test.ts tests/assets/*.test.ts tests/audio/*.test.ts tests/sb3/*.test.ts tests/compatibility/*.test.ts",
     "preview": "node --no-warnings --experimental-strip-types tools/turbowarpPreview.ts",
     "shot": "node --no-warnings --experimental-strip-types tools/turbowarpShot.ts",
+    "test:smoke": "node --no-warnings --experimental-strip-types tests/smoke/realVmPreview.smoke.ts",
     "sb3": "node --no-warnings --experimental-strip-types tools/exportSb3.ts",
     "new": "node --no-warnings --experimental-strip-types tools/newProject.ts"
   },
