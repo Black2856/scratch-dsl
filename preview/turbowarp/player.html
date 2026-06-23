@@ -6,11 +6,15 @@
 <title>TurboWarp/Scratch VM preview</title>
 <style>
     :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #15171a; color: #edf0f3; }
-    body { margin: 0; padding: 18px; }
-    header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-    h1 { font-size: 17px; margin: 0; }
-    .grow { flex: 1; }
-    button { border: 0; border-radius: 7px; padding: 8px 14px; font-weight: 700; cursor: pointer; }
+    body {
+        margin: 0; padding: 18px; box-sizing: border-box; min-height: 100vh;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    main { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    h1 { font-size: 17px; margin: 0; text-align: center; }
+    #controls { width: 480px; display: flex; align-items: center; gap: 8px; }
+    #controls #status { margin-left: auto; }
+    button { border: 0; border-radius: 7px; padding: 6px 11px; font-weight: 700; cursor: pointer; }
     #green { background: #34b66a; color: #081b0f; }
     #stop { background: #e35d6a; color: #26070a; }
     #stage-wrap { position: relative; width: 480px; height: 360px; }
@@ -24,27 +28,26 @@
     #status { font-size: 13px; color: #9ba5b1; }
     #status[data-state="running"] { color: #62dc8d; }
     #status[data-state="error"] { color: #ff7b87; }
-    .hint { font-size: 12px; color: #8b94a0; margin-top: 8px; max-width: 480px; }
+    .hint { font-size: 12px; color: #8b94a0; margin-top: 4px; max-width: 480px; text-align: center; }
 </style>
 </head>
 <body>
-<header>
+<main>
     <h1 id="title">TurboWarp / Scratch VM preview</h1>
-    <span class="grow"></span>
-    <button id="green" type="button">⚑</button>
-    <button id="stop" type="button">■</button>
-    <span id="status" data-state="loading">loading…</span>
-</header>
-
-<div id="stage-wrap">
-    <canvas id="stage" width="480" height="360" tabindex="0"></canvas>
-    <div id="monitors"></div>
-</div>
-<div class="hint">
-    本物の <code>@scratch/scratch-vm</code> + <code>scratch-render</code> がこの作品の
-    <code>.sb3</code> を実行しています。ステージをクリックして 1〜7 キーで操作。
-    <code>window.vm</code> で状態を参照できます (AI 検証用)。
-</div>
+    <div id="controls">
+        <button id="green" type="button">⚑</button>
+        <button id="stop" type="button">■</button>
+        <span id="status" data-state="loading">loading…</span>
+    </div>
+    <div id="stage-wrap">
+        <canvas id="stage" width="480" height="360" tabindex="0"></canvas>
+        <div id="monitors"></div>
+    </div>
+    <div class="hint">
+        本物の <code>@scratch/scratch-vm</code> + <code>scratch-render</code> が <code>.sb3</code> を実行しています。
+        <code>window.vm</code> で状態を参照できます (AI 検証用)。
+    </div>
+</main>
 
 <script src="/vendor/scratch-render.js"></script>
 <script src="/vendor/scratch-svg-renderer.js"></script>
