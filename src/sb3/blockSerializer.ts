@@ -142,6 +142,14 @@ const serializeBlock = (
     }
     if (block.mutation) out.mutation = normalizeMutation(block.mutation);
     if (block.comment) out.comment = block.comment;
+    // Re-emit unknown SB3 block fields preserved by import (Phase 8). Known
+    // fields above always win; opaque only carries keys the DSL does not model.
+    if (block.opaque) {
+        const target = out as Record<string, unknown>;
+        for (const [key, value] of Object.entries(block.opaque)) {
+            if (!(key in target)) target[key] = value;
+        }
+    }
     return out;
 };
 

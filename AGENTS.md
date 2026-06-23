@@ -11,13 +11,18 @@
 ## Current Status and Roadmap
 
 This is a Scratch 3-compatible DSL foundation, not a complete Scratch clone.
-Phases 0–6 are complete: validation, domain model, Runtime, Canvas/input,
-asset/audio, clone/procedure/pen/monitor, and DSL-to-SB3 export.
+Phases 0–8 are implemented: validation, domain model, Runtime, asset/audio,
+clone/procedure/pen/monitor, DSL-to-SB3 export, the AI authoring/preview
+workflow, the Phase 7.2 Scratch-compatible opcode set, and existing-SB3 import
+with round-trip preservation.
 
-- Phase 7: AI authoring workflow, sample fixtures, and real-editor verification.
-- Phase 7.1: local `workspace/<name>/` preview and SB3 export workflow.
-- Phase 8: existing SB3 import and round-trip preservation.
-- Phase 9: optional compatibility improvements.
+- Phase 7 / 7.1 / 7.2: AI authoring + preview/export workflow and the
+  Scratch-compatible opcode expansion. (done)
+- Phase 8: existing SB3 import and round-trip preservation. (done —
+  `npm run import [-- … --out <name>]`, `src/sb3/import/`.) Real projects
+  import to a valid DslProject and round-trip import → export → re-import.
+- Phase 9: optional compatibility improvements (cloud variables, project
+  meta retention, full opcode-metadata coverage).
 
 Use:
 
@@ -26,7 +31,9 @@ Use:
 - `docs/main_design/POST_PHASE6_STATUS.md` for capabilities and limits.
 - `docs/main_design/DSL_AUTHORING_GUIDE_FOR_AI.md` for DSL generation.
 - `docs/main_design/SB3_REAL_EDITOR_VERIFICATION_SPEC.md` for manual Scratch/TurboWarp checks.
-- `docs/main_design/SB3_IMPORT_DESIGN_DRAFT.md` for Phase 8 design only.
+- `docs/main_design/SB3_IMPORT_DESIGN_DRAFT.md` and
+  `docs/main_design/SB3_IMPORT_IMPLEMENTATION_PLAN.md` for the SB3 import design
+  and implemented status.
 
 Do not implement a later phase unless explicitly requested.
 
@@ -89,7 +96,7 @@ DSL
 - Visual/audio output is not reimplemented in-repo. Preview and verification run the
   exported `.sb3` in the real Scratch VM + renderer (`npm run preview` / `npm run shot`,
   backed by `@scratch/scratch-vm` + `scratch-render`). There is no self-made Canvas renderer.
-- Future SB3 import must preserve unknown blocks, mutations, extensions, comments, monitors, and metadata. Phase 8 is not implemented.
+- SB3 import preserves unknown opcodes, mutations, extensions, comments, monitors, and unknown block fields (kept opaquely in `DslBlock.opaque` and re-emitted on export). Cloud variables and project `meta` are not yet fully round-tripped (Phase 9). Import maps SB3 to a validated `DslProject`; a failed import does not partially update an existing project.
 
 ## Validation and DSL Changes
 

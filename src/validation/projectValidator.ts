@@ -354,8 +354,9 @@ const collectIdEntries = (project: DslProject): Array<{id: string; path: string}
 
 const validateIds = (project: DslProject): Diagnostic[] => {
     const diagnostics: Diagnostic[] = [];
-    const entries = collectIdEntries(project);
-    for (const entry of entries) {
+
+    // Every id must be a valid id string.
+    for (const entry of collectIdEntries(project)) {
         if (!isValidId(entry.id)) {
             diagnostics.push(makeDiagnostic(
                 'id.invalid',
@@ -365,14 +366,71 @@ const validateIds = (project: DslProject): Diagnostic[] => {
             ));
         }
     }
-    for (const duplicate of findDuplicateIds(entries)) {
-        diagnostics.push(makeDiagnostic(
-            'id.duplicate',
-            duplicate.duplicatePath,
-            `ID ${duplicate.id} was first declared at ${duplicate.firstPath}.`,
-            duplicate.id
-        ));
-    }
+
+    type Entry = {id: string; path: string};
+    const reportDuplicates = (entries: Entry[]): void => {
+        for (const duplicate of findDuplicateIds(entries)) {
+            diagnostics.push(makeDiagnostic(
+                'id.duplicate',
+                duplicate.duplicatePath,
+                `ID ${duplicate.id} was first declared at ${duplicate.firstPath}.`,
+                duplicate.id
+            ));
+        }
+    };
+
+    const targets = [project.stage, ...project.sprites];
+    const targetPath = (index: number): string => (index === 0 ? '$.stage' : `$.sprites.${index - 1}`);
+
+    // Globally-unique namespace: project / target / broadcast (stage-owned) /
+    // monitor / asset ids.
+    const globalEntries: Entry[] = [{id: project.project.id, path: '$.project.id'}];
+    targets.forEach((target, i) => {
+        globalEntries.push({id: target.id, path: `${targetPath(i)}.id`});
+        target.broadcasts.forEach((b, j) => globalEntries.push({id: b.id, path: `${targetPath(i)}.broadcasts.${j}.id`}));
+    });
+    project.monitors.forEach((m, j) => globalEntries.push({id: m.id, path: `$.monitors.${j}.id`}));
+    project.assets.forEach((a, j) => globalEntries.push({id: a.id, path: `$.assets.${j}.id`}));
+    reportDuplicates(globalEntries);
+
+    // block / comment / costume / sound ids are unique within a target but may
+    // repeat across targets (duplicating a sprite keeps its local ids).
+    targets.forEach((target, i) => {
+        const local: Entry[] = [];
+        for (const collection of ['comments', 'costumes', 'sounds'] as const) {
+            target[collection].forEach((e, j) => local.push({id: e.id, path: `${targetPath(i)}.${collection}.${j}.id`}));
+        }
+        for (const [blockId, block] of Object.entries(target.blocks)) {
+            local.push({id: block.id, path: `${targetPath(i)}.blocks.${blockId}.id`});
+        }
+        reportDuplicates(local);
+    });
+
+    // Variables/lists resolve in {a target's locals} ∪ {stage globals}; that
+    // union must be collision-free (local-vs-global is ambiguous), but two
+    // different sprites may reuse the same local id.
+    const varListEntries = (target: DslTarget, base: string): Entry[] => [
+        ...target.variables.map((v, j) => ({id: v.id, path: `${base}.variables.${j}.id`})),
+        ...target.lists.map((l, j) => ({id: l.id, path: `${base}.lists.${j}.id`}))
+    ];
+    const stageVarList = varListEntries(project.stage, '$.stage');
+    reportDuplicates(stageVarList);
+    const stageIds = new Set(stageVarList.map(e => e.id));
+    project.sprites.forEach((sprite, si) => {
+        const spriteVarList = varListEntries(sprite, `$.sprites.${si}`);
+        reportDuplicates(spriteVarList);
+        for (const entry of spriteVarList) {
+            if (stageIds.has(entry.id)) {
+                diagnostics.push(makeDiagnostic(
+                    'id.duplicate',
+                    entry.path,
+                    `ID ${entry.id} collides with a stage-global variable or list.`,
+                    entry.id
+                ));
+            }
+        }
+    });
+
     return diagnostics;
 };
 
@@ -432,13 +490,18 @@ const validateAssets = (project: DslProject): Diagnostic[] => {
 const validateComments = (target: DslTarget, targetPath: string): Diagnostic[] => {
     const diagnostics: Diagnostic[] = [];
     const commentIds = new Set(target.comments.map(comment => comment.id));
+    // Real Scratch projects keep comments whose blockId no longer resolves in
+    // this target (left over from sprite duplication, or orphaned by block
+    // deletion). The comment is preserved, so this is a warning, not an error.
     target.comments.forEach((comment, index) => {
         if (comment.blockId && !target.blocks[comment.blockId]) {
             diagnostics.push(makeDiagnostic(
                 'comment.block-dangling',
                 `${targetPath}.comments.${index}.blockId`,
-                `Comment block ${comment.blockId} does not exist.`,
-                comment.id
+                `Comment block ${comment.blockId} does not exist in this target.`,
+                comment.id,
+                null,
+                'warning'
             ));
         }
     });
@@ -449,7 +512,8 @@ const validateComments = (target: DslTarget, targetPath: string): Diagnostic[] =
                 `${targetPath}.blocks.${block.id}.comment`,
                 `Comment ${block.comment} does not exist.`,
                 block.id,
-                block.opcode
+                block.opcode,
+                'warning'
             ));
         }
     }

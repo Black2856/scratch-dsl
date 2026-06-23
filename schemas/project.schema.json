@@ -57,10 +57,10 @@
   },
   "$defs": {
     "id": {
+      "comment": "Arbitrary non-empty SB3 id string. Generation uses the Scratch soup alphabet, but validation accepts real-Scratch ids (cloud `☁ Name`, name-derived ids, unicode) so imported projects are accepted.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 64,
-      "pattern": "^[!#%()*+,\\-./:;=?@\\[\\]^_`{|}~A-Za-z0-9]+$"
+      "maxLength": 1024
     },
     "scalar": {
       "type": [
@@ -272,6 +272,10 @@
         },
         "comment": {
           "$ref": "#/$defs/id"
+        },
+        "opaque": {
+          "type": "object",
+          "additionalProperties": true
         }
       }
     },

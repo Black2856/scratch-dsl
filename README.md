@@ -96,6 +96,31 @@ npm run sb3 -- <name>
 可変状態からではなく、検証済みDSLからのみ生成します。生成された `project.json` や
 ZIPは編集せず、変更はDSLを編集して再生成します。
 
+## .sb3 を読み込む（import / Phase 8）
+
+```powershell
+npm run import -- <file.sb3> [--strict]            # 読み込んで要約を表示
+npm run import -- <file.sb3> --out <name>          # workspace/<name>/ に編集可能な作品を生成
+```
+
+既存の `.sb3`（実Scratch/TurboWarpが保存したものを含む）を読み込み、`DslProject`
+へ変換して読み込み結果の要約（target/block/asset数、extension、診断内訳）を表示します。
+出力（export）の逆方向の経路です。
+
+`--out <name>` を付けると、import した作品を **`workspace/<name>/` の編集可能な作品**として
+書き出します（`project.ts` + `assets/` + `assets.json` + `output/`、既存ディレクトリは上書き
+しません）。そのまま `npm run preview -- <name>` で実行、`npm run sb3 -- <name>` で再エクスポート
+できます。実 Scratch 作品 → DSL 作品 → `.sb3` の往復が成立します（90 MiB 級の実プロジェクトでも
+再 export が `scratch-parser` を通過）。
+
+- ZIP展開はDEFLATE対応で、entry数・サイズ上限、path traversal、CRC不一致などを拒否します。
+- compact primitive・input descriptor・mutation・未知opcode・未知フィールドを復元/保持し、
+  自前 export の往復では `project.json` が一致します。
+- 検証は実Scratchの受理範囲に合わせており（id文字種/スコープ、procedure引数、comment、
+  control_stop、standalone shadow）、実プロジェクトもそのまま読み込めます。
+- `--strict` は保持可能な不整合もerror扱い、既定の `compatibility` はwarningで継続します。
+- 表現しきれない差分（cloud変数は通常変数化、未対応opcodeの入力は警告）は診断に機械可読で出ます。
+
 ## 新しい作品を追加する手順
 
 1. `npm run new -- <name>` で雛形生成（手動なら同じ構成を用意）。
@@ -150,9 +175,10 @@ src/
   input/        InputPort
   sb3/          sb3Packager（.sb3生成）, serializer, extension/asset collector
   assets/       AssetManager / MD5 / validation
+  sb3/import/   SB3 import（inflate/unzipSafe/parse/rawToDsl/importProject）
 preview/turbowarp/  実Scratch VM + scratch-render を読むプレイヤーページ
 tools/          turbowarpPreview.ts（previewサーバ）, turbowarpShot.ts（screenshot+状態）,
-                exportSb3.ts, workspaceProject.ts, newProject.ts
+                exportSb3.ts, importSb3.ts, workspaceProject.ts, newProject.ts
 schemas/        project.schema.json
 tests/          ユニットテスト（node:test）, fixtures/, smoke/（実VM Playwright）
 docs/           設計ドキュメント（main_design/ が中心）
@@ -190,5 +216,9 @@ node --experimental-strip-types --check src/validation/projectValidator.ts
 
 - Phase 0〜7.2 まで実装済み（検証・model・Runtime・asset/audio・clone/procedure/pen/
   monitor・DSL→SB3、Phase 7.2 の互換opcode拡張）。
-- Phase 8（既存SB3 import）以降は未実装。
-- 詳細は `AGENTS.md` と `docs/NEXT_PHASE_ROADMAP(7~9).md`。
+- Phase 8（既存SB3 import・round-trip）実装済み（`npm run import`、`src/sb3/import/`）。
+  実プロジェクト（FNF 89.7MiB）が 0 検証エラーでロードし、import → export → re-import が成立。
+  `--out` で editable workspace 作品を生成可。
+- Phase 9（未実装）: cloud変数のDSL表現、project meta の再export保持、opcode metadata の網羅
+  （`opcode.input-unknown` 警告の解消）など選択的な互換性強化。
+- 詳細は `AGENTS.md` と `docs/NEXT_PHASE_ROADMAP(7~9).md`、`docs/main_design/SB3_IMPORT_*`。

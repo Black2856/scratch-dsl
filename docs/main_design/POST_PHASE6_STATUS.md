@@ -40,10 +40,13 @@ Scratch互換DSL（唯一の正本）
 - 検証済みDSLをScratch 3形式のproject.jsonへ変換する。
 - project.jsonと参照assetを含むSB3を生成する。
 - scratch-parserへ生成SB3を渡し、ZIP展開と公式SB3 schema検証を通す。
+- 既存SB3（実Scratch/TurboWarp保存物を含む）をimportしてDSL化する（Phase 8、`npm run import`）。
+  `--out <name>` でeditable workspace作品を生成でき、import → 編集 → 再exportが成立する。
 
 ## まだできないこと
 
-- 既存SB3のimport、DSL化、編集、再保存。
+- cloud変数のDSL表現とproject `meta`の再export保持（importでは通常変数化/警告）。Phase 9候補。
+- 未対応opcodeの入力metadata網羅（importは情報保持するが`opcode.input-unknown`警告が出る）。
 - Scratch公式エディタまたはTurboWarp上での実動作保証。
 - scratch-vm `loadProject` 相当によるtarget、asset、monitorの完全な復元確認。
 - Scratchと同一のthread競合順、描画、collision、音声効果の保証。

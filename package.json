@@ -10,6 +10,7 @@
     "shot": "node --no-warnings --experimental-strip-types tools/turbowarpShot.ts",
     "test:smoke": "node --no-warnings --experimental-strip-types tests/smoke/realVmPreview.smoke.ts",
     "sb3": "node --no-warnings --experimental-strip-types tools/exportSb3.ts",
+    "import": "node --no-warnings --experimental-strip-types tools/importSb3.ts",
     "new": "node --no-warnings --experimental-strip-types tools/newProject.ts"
   },
   "devDependencies": {

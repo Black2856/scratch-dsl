@@ -9,11 +9,16 @@ test('generateId creates a valid deterministic ID with an injected random source
     assert.equal(isValidId(id), true);
 });
 
-test('ID validation rejects XML-unsafe and control characters', () => {
+test('ID validation accepts arbitrary non-empty SB3 ids (real-Scratch compatible)', () => {
     assert.equal(isValidId('valid-ID_123'), true);
-    assert.equal(isValidId('contains space'), false);
-    assert.equal(isValidId('contains<angle'), false);
+    // Real Scratch ids: cloud variables (`☁ Name`), name-derived ids, spaces, unicode.
+    assert.equal(isValidId('☁ Score'), true);
+    assert.equal(isValidId('my variable'), true);
+    assert.equal(isValidId('日本語の変数'), true);
+    // Only empty or absurdly long strings are rejected.
     assert.equal(isValidId(''), false);
+    assert.equal(isValidId('x'.repeat(1025)), false);
+    assert.equal(isValidId(42), false);
 });
 
 test('duplicate ID reporting retains both declaration paths', () => {
