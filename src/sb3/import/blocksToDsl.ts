@@ -86,7 +86,10 @@ export const rawBlocksToDsl = (
         if (block.topLevel) {
             block.x = typeof rawValue.x === 'number' ? rawValue.x : 0;
             block.y = typeof rawValue.y === 'number' ? rawValue.y : 0;
-            scripts.push(blockId);
+            // A standalone top-level shadow (e.g. an orphaned menu shadow or a
+            // custom-argument reporter sitting on the canvas) is not a runnable
+            // script root, so it is kept as a block but not listed in scripts.
+            if (!block.shadow) scripts.push(blockId);
         }
 
         if (isObject(rawValue.fields)) {

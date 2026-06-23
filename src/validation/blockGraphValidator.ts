@@ -124,14 +124,6 @@ const validateProcedureMutations = (
         const proccode = mutation.proccode;
         const argumentIds = parseStringArray(mutation.argumentids);
         const argumentNames = parseStringArray(mutation.argumentnames);
-        let argumentDefaults: unknown[] | null = null;
-        try {
-            const raw = mutation.argumentdefaults;
-            argumentDefaults = Array.isArray(raw) ? raw :
-                typeof raw === 'string' ? JSON.parse(raw) : null;
-        } catch {
-            argumentDefaults = null;
-        }
 
         if (typeof proccode !== 'string' || proccode.length === 0) {
             diagnostics.push(diagnostic(
@@ -143,15 +135,18 @@ const validateProcedureMutations = (
             ));
             continue;
         }
-        if (!argumentIds || !argumentNames || !Array.isArray(argumentDefaults) ||
-            argumentIds.length !== argumentNames.length ||
-            argumentIds.length !== argumentDefaults.length) {
+        // The real invariant Scratch maintains is argument ids ↔ names parity
+        // (each parameter has both). `argumentdefaults` is editor-only default
+        // input values, and real projects ship prototypes whose defaults array
+        // length differs from the argument count; Scratch tolerates that, so we
+        // do not gate on it.
+        if (!argumentIds || !argumentNames || argumentIds.length !== argumentNames.length) {
             diagnostics.push(diagnostic(
                 'procedure.invalid-arguments',
                 'error',
                 `${targetPath}.blocks.${block.id}.mutation`,
                 block,
-                'Procedure argument IDs, names, and defaults must be arrays of equal length.'
+                'Procedure argument IDs and names must be arrays of equal length.'
             ));
             continue;
         }
@@ -213,7 +208,11 @@ const validateMetadata = (
         ));
     }
 
-    if (block.next && !metadata.allowNext) {
+    // `control_stop` is a cap only for "all"/"this script"; the "other scripts"
+    // variants continue running, so Scratch lets them carry a next block.
+    const stopOption = block.opcode === 'control_stop' ? block.fields.STOP_OPTION?.value : undefined;
+    const stopContinues = stopOption === 'other scripts in sprite' || stopOption === 'other scripts in stage';
+    if (block.next && !metadata.allowNext && !stopContinues) {
         diagnostics.push(diagnostic(
             'block.next-not-allowed',
             'error',
@@ -420,7 +419,10 @@ export const validateBlockGraph = (
             ));
         }
         if (block.topLevel) {
-            if (!scriptSet.has(block.id)) {
+            // Standalone top-level shadow blocks (orphaned menus, custom-arg
+            // reporters) are top-level but are not runnable script roots, so
+            // they are intentionally absent from target.scripts.
+            if (!block.shadow && !scriptSet.has(block.id)) {
                 diagnostics.push(diagnostic(
                     'script.root-unlisted',
                     'error',
