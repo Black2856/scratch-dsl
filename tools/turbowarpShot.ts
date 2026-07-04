@@ -31,6 +31,7 @@ if (!projectName) {
 
 const keys = (flag('--keys') ?? '').split(',').map(k => k.trim()).filter(Boolean);
 const waitMs = Number(flag('--wait', '2500'));
+const zoom = Number(flag('--zoom', '1'));
 const outPath = flag('--out') ?? path.join(repoRoot, 'workspace', projectName, 'output', `${projectName}-shot.png`);
 
 const healthCheck = (): Promise<boolean> => new Promise(resolve => {
@@ -72,11 +73,14 @@ try {
         headless: true,
         args: ['--use-gl=angle', '--use-angle=swiftshader', '--ignore-gpu-blocklist']
     });
-    const page = await browser.newPage({viewport: {width: 560, height: 480}});
+    const page = await browser.newPage({viewport: {width: 480 * zoom + 80, height: 360 * zoom + 140}});
     const errors: string[] = [];
     page.on('pageerror', e => errors.push(e.message));
 
-    await page.goto(`http://localhost:${PORT}/?name=${encodeURIComponent(projectName)}`, {waitUntil: 'load'});
+    await page.goto(
+        `http://localhost:${PORT}/?name=${encodeURIComponent(projectName)}&zoom=${zoom}`,
+        {waitUntil: 'load'}
+    );
     await page.waitForFunction(
         () => (window as unknown as {__twReady?: boolean; __twError?: string}).__twReady === true ||
             Boolean((window as unknown as {__twError?: string}).__twError),
